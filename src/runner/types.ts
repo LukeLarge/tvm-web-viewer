@@ -62,6 +62,11 @@ export type StackElement =
     | string
     | any[];
 
+export interface C5Error {
+    message: string;
+    originalHex: string;
+}
+
 export type ComputeInfo =
     | 'skipped'
     | {
@@ -94,6 +99,7 @@ export type EmulateWithStackResult = {
     };
     links: TxLinks;
     actions: OutAction[];
+    c5Error?: C5Error;
 };
 
 // Indexer v3 API types

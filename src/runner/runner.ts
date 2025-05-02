@@ -13,6 +13,9 @@ import {
     loadTransaction,
     Dictionary,
     OutAction,
+    loadOutList,
+    OutActionReserve,
+    Slice,
 } from '@ton/core';
 import {
     loadConfigParamsAsSlice,
@@ -27,6 +30,8 @@ import {
     EmulateWithStackResult,
     StateFromAPI,
     TVMLog,
+    StackElement,
+    C5Error,
 } from './types';
 import { parseC5, parseStack } from './stack';
 import { getLib, linkToTx, mcSeqnoByShard, txToLinks } from './utils';
@@ -360,6 +365,7 @@ export async function getEmulationWithStack(
         throw new Error(`Transaction failed`);
     }
     let TVMResult: TVMLog[] = [];
+    let finalC5Error: C5Error | undefined = undefined;
     let finalActions: OutAction[] = [];
     let instruction = '';
     let prevGasRemaining = 0;
@@ -375,7 +381,7 @@ export async function getEmulationWithStack(
             }
         }
         return false;
-    }
+    };
     for (let i = 0; i < lines.length; i++) {
         let line = lines[i];
         if (line.startsWith('execute')) {
@@ -448,7 +454,8 @@ export async function getEmulationWithStack(
                 exitCode = Number(line.slice(57));
                 explanation = line;
             }
-            if (!isStackAfter(i)) { // if last
+            if (!isStackAfter(i)) {
+                // if last
                 TVMResult.push({
                     instruction,
                     price: undefined,
@@ -468,7 +475,13 @@ export async function getEmulationWithStack(
             }
         }
         if (line.startsWith('final c5:')) {
-            finalActions = parseC5(line);
+            const parseResult = parseC5(line);
+            if (parseResult.error) {
+                finalC5Error = parseResult.error;
+                finalActions = [];
+            } else {
+                finalActions = parseResult.actions || [];
+            }
         }
     }
 
@@ -572,5 +585,6 @@ export async function getEmulationWithStack(
         emulatorVersion: version,
         links: txToLinks({ addr: address, lt, hash }, testnet),
         actions: finalActions,
+        c5Error: finalC5Error,
     };
 }

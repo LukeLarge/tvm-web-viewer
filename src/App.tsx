@@ -1197,15 +1197,65 @@ function App() {
                             fontFamily="IntelOneMono"
                             whiteSpace="pre-wrap"
                         >
-                            <SimpleGrid minChildWidth="27rem" spacing="2rem">
-                                {emulationResult.actions.length > 0 ? (
-                                    emulationResult.actions.map(
-                                        outActionElement
-                                    )
-                                ) : (
-                                    <Text>No actions</Text>
-                                )}
-                            </SimpleGrid>
+                            {emulationResult.c5Error ? (
+                                <Box>
+                                    <Text
+                                        color="red.500"
+                                        fontSize="16"
+                                        fontFamily="IntelOneMono Bold"
+                                    >
+                                        {emulationResult.c5Error.message}
+                                    </Text>
+                                    <Box mt="4">
+                                        <Text
+                                            fontSize="14"
+                                            fontFamily="IntelOneMono Bold"
+                                        >
+                                            Original C5 (hex):
+                                        </Text>
+                                        <Box
+                                            p="4"
+                                            mt="2"
+                                            bg="gray.100"
+                                            fontFamily="IntelOneMono"
+                                            wordBreak="break-all"
+                                        >
+                                            {
+                                                emulationResult.c5Error
+                                                    .originalHex
+                                            }
+                                        </Box>
+                                        <Button
+                                            mt="2"
+                                            rounded="0"
+                                            size="sm"
+                                            fontFamily="IntelOneMono"
+                                            colorScheme="blue"
+                                            onClick={() =>
+                                                handleCopy(
+                                                    emulationResult.c5Error
+                                                        ?.originalHex || ''
+                                                )
+                                            }
+                                        >
+                                            Copy hex
+                                        </Button>
+                                    </Box>
+                                </Box>
+                            ) : (
+                                <SimpleGrid
+                                    minChildWidth="27rem"
+                                    spacing="2rem"
+                                >
+                                    {emulationResult.actions.length > 0 ? (
+                                        emulationResult.actions.map(
+                                            outActionElement
+                                        )
+                                    ) : (
+                                        <Text>No actions</Text>
+                                    )}
+                                </SimpleGrid>
+                            )}
                         </ModalBody>
                     ) : (
                         <></>

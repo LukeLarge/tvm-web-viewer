@@ -1,5 +1,5 @@
 import { Cell, OutAction, loadOutList, OutActionReserve } from '@ton/core';
-import { StackElement } from './types';
+import { StackElement, C5Error } from './types';
 
 function parseStackElement(word: string): StackElement {
     // Parsing every type of stack element:
@@ -122,11 +122,28 @@ export function parseStack(line: string): any[] {
     return stackStack[0];
 }
 
-export function parseC5(line: string): (OutAction | OutActionReserve)[] {
+export interface C5ParseResult {
+    actions?: (OutAction | OutActionReserve)[];
+    error?: C5Error;
+}
+
+export function parseC5(line: string): C5ParseResult {
     // example:
     // final c5: C{B5EE9C7...8877FA}
-    const cellBoc = Buffer.from(line.slice(12, -1), 'hex');
-    const c5 = Cell.fromBoc(cellBoc)[0];
-    const c5Slice = c5.beginParse();
-    return loadOutList(c5Slice);
+    try {
+        const hexPart = line.slice(12, -1);
+        const cellBoc = Buffer.from(hexPart, 'hex');
+        const c5 = Cell.fromBoc(cellBoc)[0];
+        const c5Slice = c5.beginParse();
+        return { actions: loadOutList(c5Slice) };
+    } catch (e) {
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        const originalHex = line.slice(12, -1);
+        return {
+            error: {
+                message: `Failed to parse C5: ${errorMessage}`,
+                originalHex,
+            },
+        };
+    }
 }
