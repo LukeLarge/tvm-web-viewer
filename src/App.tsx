@@ -1680,14 +1680,15 @@ function stackItemElement(
     }
     //
     else if (item instanceof Slice) {
-        item = item.asCell().asSlice();
+        const itemCell = item.asCell();
+        item = itemCell.asSlice();
         strRes = item.loadBits(item.remainingBits).toString();
         if (strRes.length > 14)
             strRes = strRes.slice(0, 7) + '...' + strRes.slice(-7);
         strRes =
             `Slice {${strRes}}` +
             (item.remainingRefs > 0 ? ` + ${item.remainingRefs} refs` : '');
-        copyContent = item.asCell().toBoc().toString('hex');
+        copyContent = itemCell.toBoc().toString('hex');
     }
     //
     else if (item instanceof Builder) {
