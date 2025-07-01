@@ -42,7 +42,7 @@ import {
     TableCaption,
     IconButton,
 } from '@chakra-ui/react';
-import { ExternalLinkIcon } from '@chakra-ui/icons';
+import { ExternalLinkIcon, MinusIcon, AddIcon } from '@chakra-ui/icons';
 import { common, createStarryNight } from '@wooorm/starry-night';
 import { toHtml } from 'hast-util-to-html';
 import { fromHtml } from 'hast-util-from-html';
@@ -1438,11 +1438,12 @@ const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any 
     const [fileContent, setFileContent] = useState<string>('');
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+    const [isExpanded, setIsExpanded] = useState<boolean>(false); // collapsed by default
     const codeContainerRef = useRef<HTMLDivElement>(null);
     const fullscreenCodeRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (implementation.length > 0) {
+        if (implementation.length > 0 && isExpanded) {
             const impl = implementation[selectedImpl];
             if (impl?.path) {
                 setIsLoading(true);
@@ -1452,7 +1453,7 @@ const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any 
                 });
             }
         }
-    }, [implementation, selectedImpl, loadFileContent]);
+    }, [implementation, selectedImpl, loadFileContent, isExpanded]);
 
     // Auto-scroll to target line
     useEffect(() => {
@@ -1532,7 +1533,7 @@ const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any 
     }
 
     const impl = implementation[selectedImpl];
-    const { code, startLine } = getCodeAroundLine(fileContent, impl?.line || 0);
+    const { code, startLine } = isExpanded ? getCodeAroundLine(fileContent, impl?.line || 0) : { code: '', startLine: 1 };
 
     const highlightCodeBlock = (codeText: string) => {
         if (!starryNight || !codeText) return null;
@@ -1570,7 +1571,7 @@ const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any 
             overflow="hidden"
             height="100%"
         >
-            {isLoading ? (
+            {isLoading && isExpanded ? (
                 <Flex justifyContent="center" alignItems="center" height="200px">
                     <Spinner size="sm" />
                     <Text ml="2" fontSize="12">loading implementation...</Text>
@@ -1595,64 +1596,81 @@ const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any 
                         >
                             {extractFileNameFromUrl(impl.path)} : {impl.line} {impl.function_name ? `(${impl.function_name})` : ''}
                         </Link>
-                        <IconButton
-                            aria-label="Fullscreen"
-                            icon={<ExternalLinkIcon />}
-                            size="xs"
-                            variant="ghost"
-                            onClick={() => setIsFullscreen(true)}
-                        />
+                        <Flex gap="1">
+                            <IconButton
+                                aria-label={isExpanded ? "Collapse" : "Expand"}
+                                icon={isExpanded ? <MinusIcon /> : <AddIcon />}
+                                size="xs"
+                                variant="ghost"
+                                onClick={() => {
+                                    setIsExpanded(!isExpanded);
+                                    if (isExpanded) {
+                                        setIsFullscreen(false);
+                                    }
+                                }}
+                            />
+                            <IconButton
+                                aria-label="Fullscreen"
+                                icon={<ExternalLinkIcon />}
+                                size="xs"
+                                variant="ghost"
+                                onClick={() => setIsFullscreen(true)}
+                                isDisabled={!isExpanded}
+                            />
+                        </Flex>
                     </Flex>
-                    <Box overflowY="auto" overflowX="auto" height="calc(100% - 40px)" ref={codeContainerRef}>
-                        <Box
-                            fontFamily="IntelOneMono, monospace"
-                            fontSize="12px"
-                            lineHeight="1.4"
-                            p="16px"
-                            bg="white"
-                            minW="max-content"
-                            className="starry-night-code"
-                        >
-                            {(() => {
-                                const highlighted = highlightCodeBlock(code);
-                                if (highlighted) {
-                                    return (
-                                        <div
-                                            dangerouslySetInnerHTML={{
-                                                __html: addLineNumbers(highlighted, startLine, impl?.line)
-                                            }}
-                                        />
-                                    );
-                                } else {
-                                    return code.split('\n').map((line, idx) => {
-                                        const currentLineNumber = startLine + idx;
-                                        const isTarget = impl?.line && currentLineNumber === impl.line;
+                    {isExpanded && (
+                        <Box overflowY="auto" overflowX="auto" height="calc(100% - 40px)" ref={codeContainerRef}>
+                            <Box
+                                fontFamily="IntelOneMono, monospace"
+                                fontSize="12px"
+                                lineHeight="1.4"
+                                p="16px"
+                                bg="white"
+                                minW="max-content"
+                                className="starry-night-code"
+                            >
+                                {(() => {
+                                    const highlighted = highlightCodeBlock(code);
+                                    if (highlighted) {
                                         return (
-                                            <div 
-                                                key={idx} 
-                                                id={isTarget ? `target-line-${impl.line}` : undefined}
-                                                style={{ 
-                                                    display: 'flex',
-                                                    backgroundColor: isTarget ? '#e3f2fd' : 'transparent'
+                                            <div
+                                                dangerouslySetInnerHTML={{
+                                                    __html: addLineNumbers(highlighted, startLine, impl?.line)
                                                 }}
-                                            >
-                                                <span style={{ 
-                                                    color: isTarget ? '#1976d2' : '#999',
-                                                    fontWeight: isTarget ? 'bold' : 'normal',
-                                                    paddingRight: '10px', 
-                                                    userSelect: 'none', 
-                                                    whiteSpace: 'pre' 
-                                                }}>
-                                                    {currentLineNumber.toString().padStart(4, ' ')}
-                                                </span>
-                                                <span style={{ whiteSpace: 'pre' }}>{line}</span>
-                                            </div>
+                                            />
                                         );
-                                    });
-                                }
-                            })()}
+                                    } else {
+                                        return code.split('\n').map((line, idx) => {
+                                            const currentLineNumber = startLine + idx;
+                                            const isTarget = impl?.line && currentLineNumber === impl.line;
+                                            return (
+                                                <div 
+                                                    key={idx} 
+                                                    id={isTarget ? `target-line-${impl.line}` : undefined}
+                                                    style={{ 
+                                                        display: 'flex',
+                                                        backgroundColor: isTarget ? '#e3f2fd' : 'transparent'
+                                                    }}
+                                                >
+                                                    <span style={{ 
+                                                        color: isTarget ? '#1976d2' : '#999',
+                                                        fontWeight: isTarget ? 'bold' : 'normal',
+                                                        paddingRight: '10px', 
+                                                        userSelect: 'none', 
+                                                        whiteSpace: 'pre' 
+                                                    }}>
+                                                        {currentLineNumber.toString().padStart(4, ' ')}
+                                                    </span>
+                                                    <span style={{ whiteSpace: 'pre' }}>{line}</span>
+                                                </div>
+                                            );
+                                        });
+                                    }
+                                })()}
+                            </Box>
                         </Box>
-                    </Box>
+                    )}
                 </>
             )}
         </Box>
