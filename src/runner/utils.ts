@@ -19,7 +19,9 @@ export async function fetchTransactions(
             transactions: TransactionIndexed[];
             address_book: Record<string, AddressBookEntry>;
         }> = await axios.get(
-            `https://${testnet ? 'testnet.' : ''}toncenter.com/api/v3/transactions`,
+            `https://${
+                testnet ? 'testnet.' : ''
+            }toncenter.com/api/v3/transactions`,
             {
                 params,
             }
@@ -108,6 +110,52 @@ export async function getLib(libhash: string, testnet: boolean): Promise<Cell> {
         console.error('Error fetching libs from dton:', error);
         if (error instanceof Error) {
             throw Error("Get libs on dton's graphql: " + error.message);
+        } else {
+            throw error;
+        }
+    }
+}
+
+export async function getConfigAll(
+    testnet: boolean,
+    mcBlockSeqno: number
+): Promise<string> {
+    // https://toncenter.com/api/v2/getConfigAll?seqno=32569332
+    // {
+    //   "ok": true,
+    //   "result": {
+    //     "@type": "configInfo",
+    //     "config": {
+    //       "@type": "tvm.cell",
+    //       "bytes": "..."
+    //     }
+    //   }
+    // }
+    try {
+        const response: AxiosResponse<{
+            ok: boolean;
+            result: {
+                '@type': 'configInfo';
+                config: {
+                    '@type': 'tvm.cell';
+                    bytes: string;
+                };
+            };
+        }> = await axios.get(
+            `https://${
+                testnet ? 'testnet.' : ''
+            }toncenter.com/api/v2/getConfigAll`,
+            {
+                params: {
+                    seqno: mcBlockSeqno,
+                },
+            }
+        );
+        return response.data.result.config.bytes;
+    } catch (error) {
+        console.error('Error fetching config from Toncenter V2:', error);
+        if (error instanceof Error) {
+            throw Error('Get config on Toncenter V2: ' + error.message);
         } else {
             throw error;
         }
@@ -250,7 +298,9 @@ export async function linkToTx(
                 }
 
                 if (txLink.length !== 64)
-                    throw new Error('Seems like hash, but not of length 64. Probably missing letters');
+                    throw new Error(
+                        'Seems like hash, but not of length 64. Probably missing letters'
+                    );
 
                 // (just hash)
                 // examples:
@@ -313,11 +363,23 @@ export async function linkToTx(
 
 export function txToLinks(opts: BaseTxInfo, testnet: boolean): TxLinks {
     return {
-        toncx: `https://${testnet ? 'testnet.' : ''}ton.cx/tx/${opts.lt}:${opts.hash.toString('base64')}:${opts.addr.toString()}`,
-        tonviewer: `https://${testnet ? 'testnet.' : ''}tonviewer.com/transaction/${opts.hash.toString('hex')}`,
-        tonscan: `https://${testnet ? 'testnet.' : ''}tonscan.org/tx/${opts.hash.toString('base64')}`,
-        toncoin: `https://${testnet ? 'test-' : ''}explorer.toncoin.org/transaction?account=${opts.addr.toString()}&lt=${opts.lt}&hash=${opts.hash.toString('hex')}`,
-        dton: `https://${testnet ? 'testnet.' : ''}dton.io/tx/F64C6A3CDF3FAD1D786AACF9A6130F18F3F76EEB71294F53BBD812AD3703E70A`,
+        toncx: `https://${testnet ? 'testnet.' : ''}ton.cx/tx/${
+            opts.lt
+        }:${opts.hash.toString('base64')}:${opts.addr.toString()}`,
+        tonviewer: `https://${
+            testnet ? 'testnet.' : ''
+        }tonviewer.com/transaction/${opts.hash.toString('hex')}`,
+        tonscan: `https://${
+            testnet ? 'testnet.' : ''
+        }tonscan.org/tx/${opts.hash.toString('base64')}`,
+        toncoin: `https://${
+            testnet ? 'test-' : ''
+        }explorer.toncoin.org/transaction?account=${opts.addr.toString()}&lt=${
+            opts.lt
+        }&hash=${opts.hash.toString('hex')}`,
+        dton: `https://${
+            testnet ? 'testnet.' : ''
+        }dton.io/tx/F64C6A3CDF3FAD1D786AACF9A6130F18F3F76EEB71294F53BBD812AD3703E70A`,
     };
 }
 

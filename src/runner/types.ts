@@ -17,6 +17,7 @@ export type StateFromAPI =
 export type AccountFromAPI = {
     balance: {
         coins: string;
+        // currencies: Record<string, string>;
     };
     state: StateFromAPI;
     last: {
@@ -29,10 +30,11 @@ export type AccountFromAPI = {
         used: {
             bits: number;
             cells: number;
-            publicCells: number;
+            // publicCells?: number | undefined;
         };
     } | null;
 };
+
 
 // runner return types
 export type TVMLog = {

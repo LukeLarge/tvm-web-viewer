@@ -13,13 +13,8 @@ import {
     loadTransaction,
     Dictionary,
     OutAction,
-    loadOutList,
-    OutActionReserve,
-    Slice,
 } from '@ton/core';
 import {
-    loadConfigParamsAsSlice,
-    parseFullConfig,
     TonClient,
     TonClient4,
 } from '@ton/ton';
@@ -30,11 +25,10 @@ import {
     EmulateWithStackResult,
     StateFromAPI,
     TVMLog,
-    StackElement,
     C5Error,
 } from './types';
 import { parseC5, parseStack } from './stack';
-import { getLib, linkToTx, mcSeqnoByShard, txToLinks } from './utils';
+import { getConfigAll, getLib, linkToTx, mcSeqnoByShard, txToLinks } from './utils';
 
 function b64ToBigInt(b64: string): bigint {
     return BigInt('0x' + Buffer.from(b64, 'base64').toString('hex'));
@@ -80,12 +74,15 @@ function createShardAccountFromAPI(
                 state: normalizeStateFromAPI(apiAccount.state),
             },
             storageStats: {
+                // waiting for updates
+                // storageExtra: apiAccount.storageStat?.storageExtra,
+                storageExtra: null,
                 used: {
                     cells: toMaybeBN(apiAccount.storageStat?.used.cells),
                     bits: toMaybeBN(apiAccount.storageStat?.used.bits),
-                    publicCells: toMaybeBN(
-                        apiAccount.storageStat?.used.publicCells
-                    ),
+                    // publicCells: toMaybeBN(
+                    //     apiAccount.storageStat?.used.publicCells
+                    // ),
                 },
                 lastPaid: apiAccount.storageStat?.lastPaid || 0,
                 duePayment:
@@ -204,21 +201,15 @@ export async function getEmulationWithStack(
     // 3.1 get blockchain config
     sendStatus('Getting blockchain config');
     await waitForRateLimit();
-    const getConfigResult = await clientV4.getConfig(mcBlockSeqno);
-    const blockConfig = getConfigResult.config.cell;
-    console.log(
-        'Fees:',
-        parseFullConfig(loadConfigParamsAsSlice(blockConfig)).msgPrices
-    );
+    const configBase64 = await getConfigAll(testnet, mcBlockSeqno);
 
     // 4. get prev. state from prev. block
     sendStatus('Getting account state');
-    let account: AccountFromAPI;
     const getAccountResult = await clientV4.getAccount(
         mcBlockSeqno - 1,
         address
     );
-    account = getAccountResult.account;
+    let account = getAccountResult.account;
     let initialShardAccount = createShardAccountFromAPI(account, address);
 
     // 4.1 Get libs if needed
@@ -269,7 +260,7 @@ export async function getEmulationWithStack(
         if (!_msg) throw new Error('No in_message was found in tx');
 
         let _txRes = executor.runTransaction({
-            config: blockConfig,
+            config: configBase64,
             libs,
             verbosity: 'full_location_stack_verbose',
             shardAccount: _shardAccountStr,
@@ -302,6 +293,7 @@ export async function getEmulationWithStack(
     // 6. emulate prev. txs in block
     sendStatus('Emulating');
     let prevBalance = BigInt(account.balance.coins);
+    let prevBalanceEC = account.balance.currencies;
     if (prevTxsInBlock.length > 0) {
         let on = 1;
         for (let _tx of prevTxsInBlock) {
@@ -328,14 +320,22 @@ export async function getEmulationWithStack(
             let parsedShardAccount = loadShardAccount(
                 Cell.fromBase64(shardAccountStr).asSlice()
             );
+            console.log("parsedShardAccount", parsedShardAccount)
 
             const newBalance =
                 parsedShardAccount.account?.storage.balance.coins;
+            const newBalanceEC = parsedShardAccount.account?.storage.balance.other;
             console.log(`lt: ${_tx.lt} balance: ${newBalance}`);
 
             prevBalance = newBalance || 0n;
-
-            console.log('');
+            prevBalanceEC = {};
+            if (newBalanceEC) {
+                for (const key of newBalanceEC.keys()) {
+                    const value = newBalanceEC.get(key);
+                    prevBalanceEC[key.toString()] = value?.toString() || '0';
+                }
+            }
+            console.log('Emulated mid tx:', _tx.lt, 'new balance:', newBalance);
             on++;
         }
     }
@@ -345,7 +345,7 @@ export async function getEmulationWithStack(
     const msg = txs[0].inMessage;
     if (!msg) throw new Error('No in_message was found in tx');
 
-    sendStatus('Emulating the tx');
+    sendStatus('Emulating transaction');
     let txRes = await _emulate(txs[0], shardAccountStr);
 
     if (
@@ -362,7 +362,7 @@ export async function getEmulationWithStack(
     sendStatus('Reading stack');
     if (!txRes.result.success) {
         console.error('Transaction (with stack) failed:', txRes);
-        throw new Error(`Transaction failed`);
+        throw new Error(`Transaction failed: ${txRes.result.error}`);
     }
     let TVMResult: TVMLog[] = [];
     let finalC5Error: C5Error | undefined = undefined;
