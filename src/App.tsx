@@ -44,7 +44,11 @@ import {
     Collapse,
     useDisclosure,
 } from '@chakra-ui/react';
-import { ExternalLinkIcon, ChevronDownIcon, ChevronUpIcon } from '@chakra-ui/icons';
+import {
+    ExternalLinkIcon,
+    ChevronDownIcon,
+    ChevronUpIcon,
+} from '@chakra-ui/icons';
 import { common, createStarryNight } from '@wooorm/starry-night';
 import { toHtml } from 'hast-util-to-html';
 import { fromHtml } from 'hast-util-from-html';
@@ -71,9 +75,12 @@ type KeyPressHandler = () => void;
 const OPCODES_JSON_URL =
     'https://raw.githubusercontent.com/fakela/tvm-spec/refs/heads/dev/cp0_new.json';
 
-const getCodeAroundLine = (content: string, targetLine: number): { code: string; startLine: number } => {
+const getCodeAroundLine = (
+    content: string,
+    targetLine: number
+): { code: string; startLine: number } => {
     if (!content) return { code: 'loading...', startLine: 1 };
-    
+
     // Show the entire file content
     return { code: content, startLine: 1 };
 };
@@ -99,7 +106,6 @@ export const getQueryParam = (param: string) => {
     return queryParams.get(param);
 };
 
-
 function App() {
     const txFromArg = decodeURIComponent(getQueryParam('tx') || '');
     const [testnet, setTestnet] = useState<boolean>(
@@ -119,7 +125,9 @@ function App() {
     const [selectedStep, setSelectedStep] = useState<number>(0);
     const [isStackBefore, setIsStackBefore] = useState<boolean>(false);
     const [opcodes, setOpcodes] = useState<instruction[]>([]);
-    const [selectedOpcode, setSelectedOpcode] = useState<instruction | null>(null);
+    const [selectedOpcode, setSelectedOpcode] = useState<instruction | null>(
+        null
+    );
     const [matchingOpcodes, setMatchingOpcodes] = useState<instruction[]>([]);
     const [selectedOpcodeStackDiff, setSelectedOpcodeStackDiff] = useState<
         [number, number] | null
@@ -276,8 +284,9 @@ function App() {
                         if (i === 0) {
                             // XCHG_0I (s0,si)
                             return (
-                                opcodes.find((op) => op.mnemonic === 'XCHG_0I') ||
-                                null
+                                opcodes.find(
+                                    (op) => op.mnemonic === 'XCHG_0I'
+                                ) || null
                             );
                         } else if (i === 1) {
                             // XCHG_1I (s1,si where i >= 2)
@@ -327,11 +336,10 @@ function App() {
             }
 
             const partialMatches = opcodes.filter(
-                (op) =>
-                    op.mnemonic.toUpperCase().includes(commandName) 
-                    // ||
-                    // (op.aliases &&
-                    //     op.aliases.some(alias => alias.mnemonic.toUpperCase().includes(commandName)))
+                (op) => op.mnemonic.toUpperCase().includes(commandName)
+                // ||
+                // (op.aliases &&
+                //     op.aliases.some(alias => alias.mnemonic.toUpperCase().includes(commandName)))
             );
 
             return partialMatches.length > 0 ? partialMatches[0] : null;
@@ -339,40 +347,43 @@ function App() {
         [opcodes]
     );
 
-    const loadFileContent = useCallback(async (url: string): Promise<string> => {
-        // check cache first
-        if (fileCache.has(url)) {
-            return fileCache.get(url)!;
-        }
-
-        // check if already loading
-        if (loadingFiles.has(url)) {
-            return '';
-        }
-
-        try {
-            setLoadingFiles(prev => new Set(prev).add(url));
-            
-            const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+    const loadFileContent = useCallback(
+        async (url: string): Promise<string> => {
+            // check cache first
+            if (fileCache.has(url)) {
+                return fileCache.get(url)!;
             }
-            
-            const content = await response.text();
-            
-            setFileCache(prev => new Map(prev).set(url, content));
-            return content;
-        } catch (error) {
-            console.error('Error loading file:', error);
-            return 'Error loading file content';
-        } finally {
-            setLoadingFiles(prev => {
-                const newSet = new Set(prev);
-                newSet.delete(url);
-                return newSet;
-            });
-        }
-    }, [fileCache, loadingFiles]);
+
+            // check if already loading
+            if (loadingFiles.has(url)) {
+                return '';
+            }
+
+            try {
+                setLoadingFiles((prev) => new Set(prev).add(url));
+
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const content = await response.text();
+
+                setFileCache((prev) => new Map(prev).set(url, content));
+                return content;
+            } catch (error) {
+                console.error('Error loading file:', error);
+                return 'Error loading file content';
+            } finally {
+                setLoadingFiles((prev) => {
+                    const newSet = new Set(prev);
+                    newSet.delete(url);
+                    return newSet;
+                });
+            }
+        },
+        [fileCache, loadingFiles]
+    );
 
     const handleOpcodeClick = useCallback(
         (hexCode: string) => {
@@ -402,11 +413,10 @@ function App() {
 
         return allOpcodes
             .filter(
-                (op) =>
-                    op.mnemonic.toUpperCase().includes(commandName) 
-                    // ||
-                    // (op.aliases &&
-                    //     op.aliases.some(alias => alias.mnemonic.toUpperCase().includes(commandName)))
+                (op) => op.mnemonic.toUpperCase().includes(commandName)
+                // ||
+                // (op.aliases &&
+                //     op.aliases.some(alias => alias.mnemonic.toUpperCase().includes(commandName)))
             )
             .slice(0, 5);
     };
@@ -736,7 +746,13 @@ function App() {
                                                                 <Tooltip
                                                                     label={
                                                                         !log.error
-                                                                            ? `${log.price ? `Step cost: ${log.price}  ` : ''}Gas remaining: ${log.gasRemaining}`
+                                                                            ? `${
+                                                                                  log.price
+                                                                                      ? `Step cost: ${log.price}  `
+                                                                                      : ''
+                                                                              }Gas remaining: ${
+                                                                                  log.gasRemaining
+                                                                              }`
                                                                             : `Exit code ${log.error.code}: ${log.error.text}`
                                                                     }
                                                                     placement="right"
@@ -751,9 +767,9 @@ function App() {
                                                                             log.error
                                                                                 ? 'red.200'
                                                                                 : selectedStep ==
-                                                                                    i
-                                                                                  ? 'white'
-                                                                                  : undefined
+                                                                                  i
+                                                                                ? 'white'
+                                                                                : undefined
                                                                         }
                                                                     >
                                                                         {i + 1}.{' '}
@@ -1010,7 +1026,11 @@ function App() {
                                             ref={docBoxRef}
                                         >
                                             {selectedOpcode ? (
-                                                <Flex gap="2rem" height="100%" overflowX="auto">
+                                                <Flex
+                                                    gap="2rem"
+                                                    height="100%"
+                                                    overflowX="auto"
+                                                >
                                                     <Box flex="1" minW="50%">
                                                         <Flex alignItems="center">
                                                             <Text
@@ -1034,7 +1054,8 @@ function App() {
                                                                         '3px',
                                                                     fontFamily:
                                                                         'IntelOneMono',
-                                                                    fontSize: '90%',
+                                                                    fontSize:
+                                                                        '90%',
                                                                 },
                                                                 '& em': {
                                                                     fontStyle:
@@ -1057,7 +1078,9 @@ function App() {
                                                                                 index
                                                                             }
                                                                         >
-                                                                            {asm}
+                                                                            {
+                                                                                asm
+                                                                            }
                                                                         </code>
                                                                     )
                                                                 )
@@ -1078,20 +1101,27 @@ function App() {
                                                             <br />
                                                             <em>TLB:</em>{' '}
                                                             <code>
-                                                                {selectedOpcode.bytecode.tlb}
+                                                                {
+                                                                    selectedOpcode
+                                                                        .bytecode
+                                                                        .tlb
+                                                                }
                                                             </code>
                                                             <br />
                                                             <em>Stack:</em>{' '}
                                                             <code>
                                                                 {
-                                                                    selectedOpcode.doc.stack
+                                                                    selectedOpcode
+                                                                        .doc
+                                                                        .stack
                                                                 }
                                                             </code>
                                                             <br />
                                                             <em>Gas:</em>{' '}
                                                             <code>
                                                                 {
-                                                                    selectedOpcode.doc.gas
+                                                                    selectedOpcode
+                                                                        .doc.gas
                                                                 }
                                                             </code>
                                                             <br />
@@ -1099,7 +1129,9 @@ function App() {
                                                             <div
                                                                 dangerouslySetInnerHTML={{
                                                                     __html: parseMarkdown(
-                                                                        selectedOpcode.doc.description
+                                                                        selectedOpcode
+                                                                            .doc
+                                                                            .description
                                                                     ),
                                                                 }}
                                                             />
@@ -1111,7 +1143,8 @@ function App() {
                                                                     fontSize="12"
                                                                     fontWeight="bold"
                                                                 >
-                                                                    Similar opcodes:
+                                                                    Similar
+                                                                    opcodes:
                                                                 </Text>
                                                                 <Flex
                                                                     flexWrap="wrap"
@@ -1158,12 +1191,20 @@ function App() {
                                                             </Box>
                                                         )}
                                                     </Box>
-                                                    <ImplementationView 
-                                                        implementation={selectedOpcode.implementation}
-                                                        loadFileContent={loadFileContent}
+                                                    <ImplementationView
+                                                        implementation={
+                                                            selectedOpcode.implementation
+                                                        }
+                                                        loadFileContent={
+                                                            loadFileContent
+                                                        }
                                                         fileCache={fileCache}
-                                                        loadingFiles={loadingFiles}
-                                                        starryNight={starryNight}
+                                                        loadingFiles={
+                                                            loadingFiles
+                                                        }
+                                                        starryNight={
+                                                            starryNight
+                                                        }
                                                     />
                                                 </Flex>
                                             ) : null}
@@ -1422,25 +1463,31 @@ const convertRawToGitHubUrl = (rawUrl: string, line?: number): string => {
         const converted = rawUrl
             .replace('raw.githubusercontent.com', 'github.com')
             .replace(/\/([a-f0-9]{40})\//, '/blob/$1/');
-        
+
         return line ? `${converted}#L${line}` : converted;
     } catch {
         return rawUrl;
     }
 };
 
-const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any }> = ({
+const ImplementationView: React.FC<
+    ImplementationViewProps & { starryNight: any }
+> = ({
     implementation,
     loadFileContent,
     fileCache,
     loadingFiles,
-    starryNight
+    starryNight,
 }) => {
     const [selectedImpl, setSelectedImpl] = useState<number>(0);
     const [fileContent, setFileContent] = useState<string>('');
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
-    const { isOpen: isExpanded, onToggle: toggleExpanded, onClose: closeExpanded } = useDisclosure(); // collapsed by default
+    const {
+        isOpen: isExpanded,
+        onToggle: toggleExpanded,
+        onClose: closeExpanded,
+    } = useDisclosure(); // collapsed by default
     const codeContainerRef = useRef<HTMLDivElement>(null);
     const fullscreenCodeRef = useRef<HTMLDivElement>(null);
 
@@ -1449,7 +1496,7 @@ const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any 
             const impl = implementation[selectedImpl];
             if (impl?.path) {
                 setIsLoading(true);
-                loadFileContent(impl.path).then(content => {
+                loadFileContent(impl.path).then((content) => {
                     setFileContent(content);
                     setIsLoading(false);
                 });
@@ -1459,27 +1506,38 @@ const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any 
 
     // Auto-scroll to target line when file loads
     useEffect(() => {
-        if (!isLoading && fileContent && implementation.length > 0 && isExpanded) {
+        if (
+            !isLoading &&
+            fileContent &&
+            implementation.length > 0 &&
+            isExpanded
+        ) {
             const impl = implementation[selectedImpl];
             if (impl?.line) {
                 // Small delay to ensure DOM is updated
                 const timer = setTimeout(() => {
-                    const targetElement = document.getElementById(`target-line-${impl.line}`);
+                    const targetElement = document.getElementById(
+                        `target-line-${impl.line}`
+                    );
                     if (targetElement && codeContainerRef.current) {
                         // Use container's scroll for more reliable scrolling
                         const container = codeContainerRef.current;
-                        const targetRect = targetElement.getBoundingClientRect();
+                        const targetRect =
+                            targetElement.getBoundingClientRect();
                         const containerRect = container.getBoundingClientRect();
-                        
-                        const scrollTop = container.scrollTop + (targetRect.top - containerRect.top) - 20; // 20px offset from top
-                        
+
+                        const scrollTop =
+                            container.scrollTop +
+                            (targetRect.top - containerRect.top) -
+                            20; // 20px offset from top
+
                         container.scrollTo({
                             top: scrollTop,
-                            behavior: 'smooth'
+                            behavior: 'smooth',
                         });
                     }
                 }, 150); // Slightly longer delay for better reliability
-                
+
                 return () => clearTimeout(timer);
             }
         }
@@ -1487,26 +1545,37 @@ const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any 
 
     // Auto-scroll when expanding already loaded content
     useEffect(() => {
-        if (isExpanded && !isLoading && fileContent && implementation.length > 0) {
+        if (
+            isExpanded &&
+            !isLoading &&
+            fileContent &&
+            implementation.length > 0
+        ) {
             const impl = implementation[selectedImpl];
             if (impl?.line) {
                 // Longer delay to ensure collapse animation is complete
                 const timer = setTimeout(() => {
-                    const targetElement = document.getElementById(`target-line-${impl.line}`);
+                    const targetElement = document.getElementById(
+                        `target-line-${impl.line}`
+                    );
                     if (targetElement && codeContainerRef.current) {
                         const container = codeContainerRef.current;
-                        const targetRect = targetElement.getBoundingClientRect();
+                        const targetRect =
+                            targetElement.getBoundingClientRect();
                         const containerRect = container.getBoundingClientRect();
-                        
-                        const scrollTop = container.scrollTop + (targetRect.top - containerRect.top) - 20;
-                        
+
+                        const scrollTop =
+                            container.scrollTop +
+                            (targetRect.top - containerRect.top) -
+                            20;
+
                         container.scrollTo({
                             top: scrollTop,
-                            behavior: 'smooth'
+                            behavior: 'smooth',
                         });
                     }
                 }, 400); // Wait for collapse animation to complete
-                
+
                 return () => clearTimeout(timer);
             }
         }
@@ -1514,38 +1583,49 @@ const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any 
 
     // Auto-scroll when opening fullscreen
     useEffect(() => {
-        if (isFullscreen && implementation.length > 0 && !isLoading && fileContent) {
+        if (
+            isFullscreen &&
+            implementation.length > 0 &&
+            !isLoading &&
+            fileContent
+        ) {
             const impl = implementation[selectedImpl];
             if (impl?.line) {
                 const scrollToTarget = (attempt = 1) => {
                     const maxAttempts = 3;
                     const targetId = `fullscreen-target-line-${impl.line}`;
-                    
+
                     let fullscreenTarget = document.getElementById(targetId);
-                    
+
                     // check within modal if not found
                     if (!fullscreenTarget) {
-                        const modal = document.getElementById('fullscreen-modal');
+                        const modal =
+                            document.getElementById('fullscreen-modal');
                         if (modal) {
-                            fullscreenTarget = modal.querySelector(`[id="${targetId}"]`);
+                            fullscreenTarget = modal.querySelector(
+                                `[id="${targetId}"]`
+                            );
                         }
                     }
-                    
+
                     if (fullscreenTarget) {
                         // use scrollIntoView directly - it's the only method that works reliably
-                        fullscreenTarget.scrollIntoView({ 
-                            behavior: 'smooth', 
+                        fullscreenTarget.scrollIntoView({
+                            behavior: 'smooth',
                             block: 'start',
-                            inline: 'nearest'
+                            inline: 'nearest',
                         });
                     } else if (attempt < maxAttempts) {
                         // retry with delay if element not found yet
-                        setTimeout(() => scrollToTarget(attempt + 1), 300 * attempt);
+                        setTimeout(
+                            () => scrollToTarget(attempt + 1),
+                            300 * attempt
+                        );
                     }
                 };
-                
+
                 const timer = setTimeout(() => scrollToTarget(), 400);
-                
+
                 return () => clearTimeout(timer);
             }
         }
@@ -1562,14 +1642,19 @@ const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any 
     }
 
     const impl = implementation[selectedImpl];
-    const { code, startLine } = isExpanded ? getCodeAroundLine(fileContent, impl?.line || 0) : { code: '', startLine: 1 };
+    const { code, startLine } = isExpanded
+        ? getCodeAroundLine(fileContent, impl?.line || 0)
+        : { code: '', startLine: 1 };
 
     const highlightCodeBlock = (codeText: string) => {
         if (!starryNight || !codeText) return null;
-        
+
         try {
             // try to find C++ scope
-            const cppScope = starryNight.flagToScope('cpp') || starryNight.flagToScope('c++') || 'source.cpp';
+            const cppScope =
+                starryNight.flagToScope('cpp') ||
+                starryNight.flagToScope('c++') ||
+                'source.cpp';
             const tree = starryNight.highlight(codeText, cppScope);
             return toHtml(tree);
         } catch (error) {
@@ -1578,17 +1663,27 @@ const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any 
         }
     };
 
-    const addLineNumbers = (htmlContent: string, startLine: number, targetLine?: number) => {
+    const addLineNumbers = (
+        htmlContent: string,
+        startLine: number,
+        targetLine?: number
+    ) => {
         const lines = htmlContent.split('\n');
-        return lines.map((line, idx) => {
-            const currentLineNumber = startLine + idx;
-            const lineNumber = currentLineNumber.toString().padStart(4, ' ');
-            const isTarget = targetLine && currentLineNumber === targetLine;
-            const bgColor = isTarget ? 'background-color: #e3f2fd;' : '';
-            const lineNumColor = isTarget ? 'color: #1976d2; font-weight: bold;' : 'color: #999;';
-            const lineId = isTarget ? `id="target-line-${targetLine}"` : '';
-            return `<div ${lineId} style="display: flex; ${bgColor}"><span style="${lineNumColor} padding-right: 10px; user-select: none; white-space: pre;">${lineNumber}</span><span style="white-space: pre;">${line}</span></div>`;
-        }).join('');
+        return lines
+            .map((line, idx) => {
+                const currentLineNumber = startLine + idx;
+                const lineNumber = currentLineNumber
+                    .toString()
+                    .padStart(4, ' ');
+                const isTarget = targetLine && currentLineNumber === targetLine;
+                const bgColor = isTarget ? 'background-color: #e3f2fd;' : '';
+                const lineNumColor = isTarget
+                    ? 'color: #1976d2; font-weight: bold;'
+                    : 'color: #999;';
+                const lineId = isTarget ? `id="target-line-${targetLine}"` : '';
+                return `<div ${lineId} style="display: flex; ${bgColor}"><span style="${lineNumColor} padding-right: 10px; user-select: none; white-space: pre;">${lineNumber}</span><span style="white-space: pre;">${line}</span></div>`;
+            })
+            .join('');
     };
 
     const codeViewer = (
@@ -1598,12 +1693,18 @@ const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any 
             borderColor="gray.300"
             borderRadius="0"
             overflow="hidden"
-            height={isExpanded ? "100%" : "auto"}
+            height={isExpanded ? '100%' : 'auto'}
         >
             {isLoading && isExpanded ? (
-                <Flex justifyContent="center" alignItems="center" height="200px">
+                <Flex
+                    justifyContent="center"
+                    alignItems="center"
+                    height="200px"
+                >
                     <Spinner size="sm" />
-                    <Text ml="2" fontSize="12">loading implementation...</Text>
+                    <Text ml="2" fontSize="12">
+                        loading implementation...
+                    </Text>
                 </Flex>
             ) : (
                 <>
@@ -1623,12 +1724,21 @@ const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any 
                             //textDecoration="underline"
                             _hover={{ color: 'gray.600' }}
                         >
-                            {extractFileNameFromUrl(impl.path)} : {impl.line} {impl.function_name ? `(${impl.function_name})` : ''}
+                            {extractFileNameFromUrl(impl.path)} : {impl.line}{' '}
+                            {impl.function_name
+                                ? `(${impl.function_name})`
+                                : ''}
                         </Link>
                         <Flex gap="1">
                             <IconButton
-                                aria-label={isExpanded ? "Collapse" : "Expand"}
-                                icon={isExpanded ? <ChevronUpIcon w={4} h={4} /> : <ChevronDownIcon w={4} h={4} />}
+                                aria-label={isExpanded ? 'Collapse' : 'Expand'}
+                                icon={
+                                    isExpanded ? (
+                                        <ChevronUpIcon w={4} h={4} />
+                                    ) : (
+                                        <ChevronDownIcon w={4} h={4} />
+                                    )
+                                }
                                 size="xs"
                                 variant="ghost"
                                 onClick={() => {
@@ -1648,12 +1758,20 @@ const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any 
                             />
                         </Flex>
                     </Flex>
-                    <Collapse 
-                        in={isExpanded} 
+                    <Collapse
+                        in={isExpanded}
                         animateOpacity
-                        transition={{ enter: { duration: 0.3 }, exit: { duration: 0.2 } }}
+                        transition={{
+                            enter: { duration: 0.3 },
+                            exit: { duration: 0.2 },
+                        }}
                     >
-                        <Box overflowY="auto" overflowX="auto" maxHeight="400px" ref={codeContainerRef}>
+                        <Box
+                            overflowY="auto"
+                            overflowX="auto"
+                            maxHeight="400px"
+                            ref={codeContainerRef}
+                        >
                             <Box
                                 fontFamily="IntelOneMono, monospace"
                                 fontSize="12px"
@@ -1664,41 +1782,81 @@ const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any 
                                 className="starry-night-code"
                             >
                                 {(() => {
-                                    const highlighted = highlightCodeBlock(code);
+                                    const highlighted =
+                                        highlightCodeBlock(code);
                                     if (highlighted) {
                                         return (
                                             <div
                                                 dangerouslySetInnerHTML={{
-                                                    __html: addLineNumbers(highlighted, startLine, impl?.line)
+                                                    __html: addLineNumbers(
+                                                        highlighted,
+                                                        startLine,
+                                                        impl?.line
+                                                    ),
                                                 }}
                                             />
                                         );
                                     } else {
-                                        return code.split('\n').map((line, idx) => {
-                                            const currentLineNumber = startLine + idx;
-                                            const isTarget = impl?.line && currentLineNumber === impl.line;
-                                            return (
-                                                <div 
-                                                    key={idx} 
-                                                    id={isTarget ? `target-line-${impl.line}` : undefined}
-                                                    style={{ 
-                                                        display: 'flex',
-                                                        backgroundColor: isTarget ? '#e3f2fd' : 'transparent'
-                                                    }}
-                                                >
-                                                    <span style={{ 
-                                                        color: isTarget ? '#1976d2' : '#999',
-                                                        fontWeight: isTarget ? 'bold' : 'normal',
-                                                        paddingRight: '10px', 
-                                                        userSelect: 'none', 
-                                                        whiteSpace: 'pre' 
-                                                    }}>
-                                                        {currentLineNumber.toString().padStart(4, ' ')}
-                                                    </span>
-                                                    <span style={{ whiteSpace: 'pre' }}>{line}</span>
-                                                </div>
-                                            );
-                                        });
+                                        return code
+                                            .split('\n')
+                                            .map((line, idx) => {
+                                                const currentLineNumber =
+                                                    startLine + idx;
+                                                const isTarget =
+                                                    impl?.line &&
+                                                    currentLineNumber ===
+                                                        impl.line;
+                                                return (
+                                                    <div
+                                                        key={idx}
+                                                        id={
+                                                            isTarget
+                                                                ? `target-line-${impl.line}`
+                                                                : undefined
+                                                        }
+                                                        style={{
+                                                            display: 'flex',
+                                                            backgroundColor:
+                                                                isTarget
+                                                                    ? '#e3f2fd'
+                                                                    : 'transparent',
+                                                        }}
+                                                    >
+                                                        <span
+                                                            style={{
+                                                                color: isTarget
+                                                                    ? '#1976d2'
+                                                                    : '#999',
+                                                                fontWeight:
+                                                                    isTarget
+                                                                        ? 'bold'
+                                                                        : 'normal',
+                                                                paddingRight:
+                                                                    '10px',
+                                                                userSelect:
+                                                                    'none',
+                                                                whiteSpace:
+                                                                    'pre',
+                                                            }}
+                                                        >
+                                                            {currentLineNumber
+                                                                .toString()
+                                                                .padStart(
+                                                                    4,
+                                                                    ' '
+                                                                )}
+                                                        </span>
+                                                        <span
+                                                            style={{
+                                                                whiteSpace:
+                                                                    'pre',
+                                                            }}
+                                                        >
+                                                            {line}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            });
                                     }
                                 })()}
                             </Box>
@@ -1711,20 +1869,28 @@ const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any 
 
     return (
         <>
-            <Box flex="1" maxW="50%" minW="400px" display="flex" flexDirection="column">
+            <Box
+                flex="1"
+                maxW="50%"
+                minW="400px"
+                display="flex"
+                flexDirection="column"
+            >
                 <Flex justifyContent="space-between" alignItems="center" mb="2">
                     <Text fontSize="16" fontFamily="IntelOneMono Bold">
                         Implementation
                     </Text>
                 </Flex>
-                
+
                 {implementation.length > 1 && (
                     <Flex mb="2" gap="1">
                         {implementation.map((impl, idx) => (
                             <Button
                                 key={idx}
                                 size="xs"
-                                variant={selectedImpl === idx ? 'solid' : 'outline'}
+                                variant={
+                                    selectedImpl === idx ? 'solid' : 'outline'
+                                }
                                 rounded="0"
                                 borderColor="#ACACAC"
                                 bg={selectedImpl === idx ? '#D9D9D9' : 'white'}
@@ -1756,19 +1922,26 @@ const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any 
                         borderBottom="1px solid"
                         borderColor="gray.200"
                     >
-                        <Flex justifyContent="space-between" alignItems="center">
+                        <Flex
+                            justifyContent="space-between"
+                            alignItems="center"
+                        >
                             <Flex alignItems="center" gap="2">
                                 <Text>
                                     {impl.function_name || 'Implementation'} -
                                 </Text>
                                 <Link
-                                    href={convertRawToGitHubUrl(impl.path, impl.line)}
+                                    href={convertRawToGitHubUrl(
+                                        impl.path,
+                                        impl.line
+                                    )}
                                     isExternal
                                     color="blue.600"
                                     textDecoration="underline"
                                     _hover={{ color: 'blue.800' }}
                                 >
-                                    {extractFileNameFromUrl(impl.path)}:{impl.line}
+                                    {extractFileNameFromUrl(impl.path)}:
+                                    {impl.line}
                                 </Link>
                             </Flex>
                             <Flex gap="2">
@@ -1777,14 +1950,23 @@ const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any 
                                         <Button
                                             key={idx}
                                             size="xs"
-                                            variant={selectedImpl === idx ? 'solid' : 'outline'}
+                                            variant={
+                                                selectedImpl === idx
+                                                    ? 'solid'
+                                                    : 'outline'
+                                            }
                                             rounded="0"
                                             borderColor="#ACACAC"
-                                            bg={selectedImpl === idx ? '#D9D9D9' : 'white'}
+                                            bg={
+                                                selectedImpl === idx
+                                                    ? '#D9D9D9'
+                                                    : 'white'
+                                            }
                                             onClick={() => setSelectedImpl(idx)}
                                             fontSize="10"
                                         >
-                                            {impl.function_name || `impl ${idx + 1}`}
+                                            {impl.function_name ||
+                                                `impl ${idx + 1}`}
                                         </Button>
                                     ))}
                             </Flex>
@@ -1792,7 +1974,11 @@ const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any 
                     </ModalHeader>
                     <ModalCloseButton />
                     <ModalBody p="0">
-                        <Box height="calc(100vh - 80px)" overflow="auto" ref={fullscreenCodeRef}>
+                        <Box
+                            height="calc(100vh - 80px)"
+                            overflow="auto"
+                            ref={fullscreenCodeRef}
+                        >
                             <Box
                                 fontFamily="IntelOneMono, monospace"
                                 fontSize="14px"
@@ -1804,54 +1990,114 @@ const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any 
                                 className="starry-night-code"
                             >
                                 {(() => {
-                                    const fullCode = fileContent || 'loading...';
-                                    const highlighted = highlightCodeBlock(fullCode);
+                                    const fullCode =
+                                        fileContent || 'loading...';
+                                    const highlighted =
+                                        highlightCodeBlock(fullCode);
                                     if (highlighted) {
-                                        const addFullLineNumbers = (htmlContent: string) => {
-                                            const lines = htmlContent.split('\n');
-                                            return lines.map((line, idx) => {
-                                                const currentLineNumber = idx + 1;
-                                                const lineNumber = currentLineNumber.toString().padStart(4, ' ');
-                                                const isTarget = impl?.line && currentLineNumber === impl.line;
-                                                const bgColor = isTarget ? 'background-color: #e3f2fd;' : '';
-                                                const lineNumColor = isTarget ? 'color: #1976d2; font-weight: bold;' : 'color: #999;';
-                                                const lineId = isTarget ? `id="fullscreen-target-line-${impl.line}"` : '';
-                                                return `<div ${lineId} style="display: flex; ${bgColor}"><span style="${lineNumColor} padding-right: 15px; user-select: none; white-space: pre;">${lineNumber}</span><span style="white-space: pre; word-break: break-all;">${line}</span></div>`;
-                                            }).join('');
+                                        const addFullLineNumbers = (
+                                            htmlContent: string
+                                        ) => {
+                                            const lines =
+                                                htmlContent.split('\n');
+                                            return lines
+                                                .map((line, idx) => {
+                                                    const currentLineNumber =
+                                                        idx + 1;
+                                                    const lineNumber =
+                                                        currentLineNumber
+                                                            .toString()
+                                                            .padStart(4, ' ');
+                                                    const isTarget =
+                                                        impl?.line &&
+                                                        currentLineNumber ===
+                                                            impl.line;
+                                                    const bgColor = isTarget
+                                                        ? 'background-color: #e3f2fd;'
+                                                        : '';
+                                                    const lineNumColor =
+                                                        isTarget
+                                                            ? 'color: #1976d2; font-weight: bold;'
+                                                            : 'color: #999;';
+                                                    const lineId = isTarget
+                                                        ? `id="fullscreen-target-line-${impl.line}"`
+                                                        : '';
+                                                    return `<div ${lineId} style="display: flex; ${bgColor}"><span style="${lineNumColor} padding-right: 15px; user-select: none; white-space: pre;">${lineNumber}</span><span style="white-space: pre; word-break: break-all;">${line}</span></div>`;
+                                                })
+                                                .join('');
                                         };
                                         return (
                                             <div
                                                 dangerouslySetInnerHTML={{
-                                                    __html: addFullLineNumbers(highlighted)
+                                                    __html: addFullLineNumbers(
+                                                        highlighted
+                                                    ),
                                                 }}
                                             />
                                         );
                                     } else {
-                                        return fullCode.split('\n').map((line, idx) => {
-                                            const currentLineNumber = idx + 1;
-                                            const isTarget = impl?.line && currentLineNumber === impl.line;
-                                            return (
-                                                <div 
-                                                    key={idx} 
-                                                    id={isTarget ? `fullscreen-target-line-${impl.line}` : undefined}
-                                                    style={{ 
-                                                        display: 'flex',
-                                                        backgroundColor: isTarget ? '#e3f2fd' : 'transparent'
-                                                    }}
-                                                >
-                                                    <span style={{ 
-                                                        color: isTarget ? '#1976d2' : '#999',
-                                                        fontWeight: isTarget ? 'bold' : 'normal',
-                                                        paddingRight: '15px', 
-                                                        userSelect: 'none', 
-                                                        whiteSpace: 'pre' 
-                                                    }}>
-                                                        {currentLineNumber.toString().padStart(4, ' ')}
-                                                    </span>
-                                                    <span style={{ wordBreak: 'break-all', whiteSpace: 'pre' }}>{line}</span>
-                                                </div>
-                                            );
-                                        });
+                                        return fullCode
+                                            .split('\n')
+                                            .map((line, idx) => {
+                                                const currentLineNumber =
+                                                    idx + 1;
+                                                const isTarget =
+                                                    impl?.line &&
+                                                    currentLineNumber ===
+                                                        impl.line;
+                                                return (
+                                                    <div
+                                                        key={idx}
+                                                        id={
+                                                            isTarget
+                                                                ? `fullscreen-target-line-${impl.line}`
+                                                                : undefined
+                                                        }
+                                                        style={{
+                                                            display: 'flex',
+                                                            backgroundColor:
+                                                                isTarget
+                                                                    ? '#e3f2fd'
+                                                                    : 'transparent',
+                                                        }}
+                                                    >
+                                                        <span
+                                                            style={{
+                                                                color: isTarget
+                                                                    ? '#1976d2'
+                                                                    : '#999',
+                                                                fontWeight:
+                                                                    isTarget
+                                                                        ? 'bold'
+                                                                        : 'normal',
+                                                                paddingRight:
+                                                                    '15px',
+                                                                userSelect:
+                                                                    'none',
+                                                                whiteSpace:
+                                                                    'pre',
+                                                            }}
+                                                        >
+                                                            {currentLineNumber
+                                                                .toString()
+                                                                .padStart(
+                                                                    4,
+                                                                    ' '
+                                                                )}
+                                                        </span>
+                                                        <span
+                                                            style={{
+                                                                wordBreak:
+                                                                    'break-all',
+                                                                whiteSpace:
+                                                                    'pre',
+                                                            }}
+                                                        >
+                                                            {line}
+                                                        </span>
+                                                    </div>
+                                                );
+                                            });
                                     }
                                 })()}
                             </Box>
@@ -1863,16 +2109,19 @@ const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any 
     );
 };
 
-const highlightCodeAroundLine = (content: string, targetLine: number): string => {
+const highlightCodeAroundLine = (
+    content: string,
+    targetLine: number
+): string => {
     if (!content) return 'loading...';
-    
+
     const lines = content.split('\n');
     const contextLines = 15; // show 15 lines before and after
     const startLine = Math.max(0, targetLine - contextLines - 1);
     const endLine = Math.min(lines.length, targetLine + contextLines);
-    
+
     const relevantLines = lines.slice(startLine, endLine);
-    
+
     return relevantLines
         .map((line, idx) => {
             const lineNumber = startLine + idx + 1;
