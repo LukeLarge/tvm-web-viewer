@@ -41,8 +41,10 @@ import {
     Tfoot,
     TableCaption,
     IconButton,
+    Collapse,
+    useDisclosure,
 } from '@chakra-ui/react';
-import { ExternalLinkIcon, MinusIcon, AddIcon } from '@chakra-ui/icons';
+import { ExternalLinkIcon, ChevronDownIcon, ChevronUpIcon } from '@chakra-ui/icons';
 import { common, createStarryNight } from '@wooorm/starry-night';
 import { toHtml } from 'hast-util-to-html';
 import { fromHtml } from 'hast-util-from-html';
@@ -1438,7 +1440,7 @@ const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any 
     const [fileContent, setFileContent] = useState<string>('');
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
-    const [isExpanded, setIsExpanded] = useState<boolean>(false); // collapsed by default
+    const { isOpen: isExpanded, onToggle: toggleExpanded, onClose: closeExpanded } = useDisclosure(); // collapsed by default
     const codeContainerRef = useRef<HTMLDivElement>(null);
     const fullscreenCodeRef = useRef<HTMLDivElement>(null);
 
@@ -1455,9 +1457,9 @@ const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any 
         }
     }, [implementation, selectedImpl, loadFileContent, isExpanded]);
 
-    // Auto-scroll to target line
+    // Auto-scroll to target line when file loads
     useEffect(() => {
-        if (!isLoading && fileContent && implementation.length > 0) {
+        if (!isLoading && fileContent && implementation.length > 0 && isExpanded) {
             const impl = implementation[selectedImpl];
             if (impl?.line) {
                 // Small delay to ensure DOM is updated
@@ -1481,7 +1483,34 @@ const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any 
                 return () => clearTimeout(timer);
             }
         }
-    }, [isLoading, fileContent, selectedImpl, implementation]);
+    }, [isLoading, fileContent, selectedImpl, implementation, isExpanded]);
+
+    // Auto-scroll when expanding already loaded content
+    useEffect(() => {
+        if (isExpanded && !isLoading && fileContent && implementation.length > 0) {
+            const impl = implementation[selectedImpl];
+            if (impl?.line) {
+                // Longer delay to ensure collapse animation is complete
+                const timer = setTimeout(() => {
+                    const targetElement = document.getElementById(`target-line-${impl.line}`);
+                    if (targetElement && codeContainerRef.current) {
+                        const container = codeContainerRef.current;
+                        const targetRect = targetElement.getBoundingClientRect();
+                        const containerRect = container.getBoundingClientRect();
+                        
+                        const scrollTop = container.scrollTop + (targetRect.top - containerRect.top) - 20;
+                        
+                        container.scrollTo({
+                            top: scrollTop,
+                            behavior: 'smooth'
+                        });
+                    }
+                }, 400); // Wait for collapse animation to complete
+                
+                return () => clearTimeout(timer);
+            }
+        }
+    }, [isExpanded]);
 
     // Auto-scroll when opening fullscreen
     useEffect(() => {
@@ -1569,7 +1598,7 @@ const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any 
             borderColor="gray.300"
             borderRadius="0"
             overflow="hidden"
-            height="100%"
+            height={isExpanded ? "100%" : "auto"}
         >
             {isLoading && isExpanded ? (
                 <Flex justifyContent="center" alignItems="center" height="200px">
@@ -1581,7 +1610,7 @@ const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any 
                     <Flex
                         bg="gray.50"
                         p="2"
-                        borderBottom="1px solid"
+                        pl="4"
                         borderColor="gray.200"
                         justifyContent="space-between"
                         alignItems="center"
@@ -1589,21 +1618,21 @@ const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any 
                         <Link
                             href={convertRawToGitHubUrl(impl.path, impl.line)}
                             isExternal
-                            fontSize="10"
-                            color="blue.600"
-                            textDecoration="underline"
-                            _hover={{ color: 'blue.800' }}
+                            fontSize="12"
+                            color="gray.500"
+                            //textDecoration="underline"
+                            _hover={{ color: 'gray.600' }}
                         >
                             {extractFileNameFromUrl(impl.path)} : {impl.line} {impl.function_name ? `(${impl.function_name})` : ''}
                         </Link>
                         <Flex gap="1">
                             <IconButton
                                 aria-label={isExpanded ? "Collapse" : "Expand"}
-                                icon={isExpanded ? <MinusIcon /> : <AddIcon />}
+                                icon={isExpanded ? <ChevronUpIcon w={4} h={4} /> : <ChevronDownIcon w={4} h={4} />}
                                 size="xs"
                                 variant="ghost"
                                 onClick={() => {
-                                    setIsExpanded(!isExpanded);
+                                    toggleExpanded();
                                     if (isExpanded) {
                                         setIsFullscreen(false);
                                     }
@@ -1619,8 +1648,12 @@ const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any 
                             />
                         </Flex>
                     </Flex>
-                    {isExpanded && (
-                        <Box overflowY="auto" overflowX="auto" height="calc(100% - 40px)" ref={codeContainerRef}>
+                    <Collapse 
+                        in={isExpanded} 
+                        animateOpacity
+                        transition={{ enter: { duration: 0.3 }, exit: { duration: 0.2 } }}
+                    >
+                        <Box overflowY="auto" overflowX="auto" maxHeight="400px" ref={codeContainerRef}>
                             <Box
                                 fontFamily="IntelOneMono, monospace"
                                 fontSize="12px"
@@ -1670,7 +1703,7 @@ const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any 
                                 })()}
                             </Box>
                         </Box>
-                    )}
+                    </Collapse>
                 </>
             )}
         </Box>
