@@ -40,8 +40,12 @@ import {
     Th,
     Tfoot,
     TableCaption,
+    IconButton,
 } from '@chakra-ui/react';
 import { ExternalLinkIcon } from '@chakra-ui/icons';
+import { common, createStarryNight } from '@wooorm/starry-night';
+import { toHtml } from 'hast-util-to-html';
+import { fromHtml } from 'hast-util-from-html';
 import {
     Address,
     beginCell,
@@ -59,10 +63,18 @@ import { GithubIcon } from './icons/github';
 import { TonIcon } from './icons/ton';
 import theme from './theme';
 import { DocsIcon } from './icons/docs';
+import { instruction, root_schema } from './instructions/schema';
 
 type KeyPressHandler = () => void;
 const OPCODES_JSON_URL =
-    'https://raw.githubusercontent.com/ton-community/ton-docs/refs/heads/main/src/data/opcodes/opcodes.json';
+    'https://raw.githubusercontent.com/fakela/tvm-spec/refs/heads/dev/cp0_new.json';
+
+const getCodeAroundLine = (content: string, targetLine: number): { code: string; startLine: number } => {
+    if (!content) return { code: 'loading...', startLine: 1 };
+    
+    // Show the entire file content
+    return { code: content, startLine: 1 };
+};
 
 const useGlobalKeyPress = (key: string, action: KeyPressHandler) => {
     useEffect(() => {
@@ -85,17 +97,6 @@ export const getQueryParam = (param: string) => {
     return queryParams.get(param);
 };
 
-interface Opcode {
-    name: string;
-    alias_of: string;
-    tlb: string;
-    doc_category: string;
-    doc_opcode: string;
-    doc_fift: string;
-    doc_stack: string;
-    doc_gas: number | string;
-    doc_description: string;
-}
 
 function App() {
     const txFromArg = decodeURIComponent(getQueryParam('tx') || '');
@@ -115,15 +116,18 @@ function App() {
     const [processing, setProcessing] = useState(false);
     const [selectedStep, setSelectedStep] = useState<number>(0);
     const [isStackBefore, setIsStackBefore] = useState<boolean>(false);
-    const [opcodes, setOpcodes] = useState<Opcode[]>([]);
-    const [selectedOpcode, setSelectedOpcode] = useState<Opcode | null>(null);
-    const [matchingOpcodes, setMatchingOpcodes] = useState<Opcode[]>([]);
+    const [opcodes, setOpcodes] = useState<instruction[]>([]);
+    const [selectedOpcode, setSelectedOpcode] = useState<instruction | null>(null);
+    const [matchingOpcodes, setMatchingOpcodes] = useState<instruction[]>([]);
     const [selectedOpcodeStackDiff, setSelectedOpcodeStackDiff] = useState<
         [number, number] | null
     >(null);
     const [maxDocWindowHeight, setMaxDocWindowHeight] = useState<number>(0);
     const docBoxRef = useRef<HTMLDivElement>(null);
     const [isHoveringStack, setIsHoveringStack] = useState(false);
+    const [fileCache, setFileCache] = useState<Map<string, string>>(new Map());
+    const [loadingFiles, setLoadingFiles] = useState<Set<string>>(new Set());
+    const [starryNight, setStarryNight] = useState<any>(null);
 
     const updateURLWithTx = (tx: string) => {
         const encodedTx = encodeURIComponent(tx);
@@ -219,8 +223,8 @@ function App() {
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
-            const data: Opcode[] = await response.json();
-            setOpcodes(data);
+            const data: root_schema = await response.json();
+            setOpcodes(data.instructions);
         } catch (error) {
             console.error('Error loading opcodes:', error);
         }
@@ -229,10 +233,21 @@ function App() {
     useEffect(() => {
         // load opcodes on first render
         loadOpcodesJson();
+        // initialize starry night
+        initStarryNight();
     }, []);
 
+    const initStarryNight = async () => {
+        try {
+            const starryNightInstance = await createStarryNight(common);
+            setStarryNight(starryNightInstance);
+        } catch (error) {
+            console.error('Failed to initialize starry night:', error);
+        }
+    };
+
     const findOpcodeInfo = useCallback(
-        (opcodeStr: string): Opcode | null => {
+        (opcodeStr: string): instruction | null => {
             if (!opcodeStr || opcodes.length === 0) return null;
 
             let normalizedStr = opcodeStr.trim();
@@ -245,7 +260,7 @@ function App() {
             const commandName = parts[0].toUpperCase();
 
             const exactMatch = opcodes.find(
-                (op) => op.name.toUpperCase() === commandName
+                (op) => op.mnemonic.toUpperCase() === commandName
             );
             if (exactMatch) return exactMatch;
 
@@ -259,7 +274,7 @@ function App() {
                         if (i === 0) {
                             // XCHG_0I (s0,si)
                             return (
-                                opcodes.find((op) => op.name === 'XCHG_0I') ||
+                                opcodes.find((op) => op.mnemonic === 'XCHG_0I') ||
                                 null
                             );
                         } else if (i === 1) {
@@ -267,7 +282,7 @@ function App() {
                             if (j >= 2) {
                                 return (
                                     opcodes.find(
-                                        (op) => op.name === 'XCHG_1I'
+                                        (op) => op.mnemonic === 'XCHG_1I'
                                     ) || null
                                 );
                             }
@@ -276,7 +291,7 @@ function App() {
                             if (i >= 1 && j > i && j <= 15) {
                                 return (
                                     opcodes.find(
-                                        (op) => op.name === 'XCHG_IJ'
+                                        (op) => op.mnemonic === 'XCHG_IJ'
                                     ) || null
                                 );
                             }
@@ -286,8 +301,8 @@ function App() {
             }
 
             for (const op of opcodes) {
-                if (op.doc_fift.includes('[') && op.doc_fift.includes(']')) {
-                    const fiftParts = op.doc_fift.split(/\s+/);
+                if (op.doc.fift.includes('[') && op.doc.fift.includes(']')) {
+                    const fiftParts = op.doc.fift.split(/\s+/);
                     const fiftCommand = fiftParts[0].toUpperCase();
                     if (fiftCommand === commandName) {
                         const paramPattern = fiftParts.slice(1).join(' ');
@@ -302,7 +317,7 @@ function App() {
             }
 
             const matchingByDescription = opcodes.filter((op) =>
-                op.doc_description.toUpperCase().includes(commandName)
+                op.doc.description.toUpperCase().includes(commandName)
             );
 
             if (matchingByDescription.length > 0) {
@@ -311,15 +326,51 @@ function App() {
 
             const partialMatches = opcodes.filter(
                 (op) =>
-                    op.name.toUpperCase().includes(commandName) ||
-                    (op.alias_of &&
-                        op.alias_of.toUpperCase().includes(commandName))
+                    op.mnemonic.toUpperCase().includes(commandName) 
+                    // ||
+                    // (op.aliases &&
+                    //     op.aliases.some(alias => alias.mnemonic.toUpperCase().includes(commandName)))
             );
 
             return partialMatches.length > 0 ? partialMatches[0] : null;
         },
         [opcodes]
     );
+
+    const loadFileContent = useCallback(async (url: string): Promise<string> => {
+        // check cache first
+        if (fileCache.has(url)) {
+            return fileCache.get(url)!;
+        }
+
+        // check if already loading
+        if (loadingFiles.has(url)) {
+            return '';
+        }
+
+        try {
+            setLoadingFiles(prev => new Set(prev).add(url));
+            
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const content = await response.text();
+            
+            setFileCache(prev => new Map(prev).set(url, content));
+            return content;
+        } catch (error) {
+            console.error('Error loading file:', error);
+            return 'Error loading file content';
+        } finally {
+            setLoadingFiles(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(url);
+                return newSet;
+            });
+        }
+    }, [fileCache, loadingFiles]);
 
     const handleOpcodeClick = useCallback(
         (hexCode: string) => {
@@ -333,7 +384,7 @@ function App() {
             setMatchingOpcodes(allMatches);
             setSelectedOpcode(opcodeInfo);
             setSelectedOpcodeStackDiff(
-                parseOpcodeStackDiff(opcodeInfo?.doc_stack || '')
+                parseOpcodeStackDiff(opcodeInfo?.doc.stack || '')
             );
         },
         [opcodes, loadOpcodesJson, findOpcodeInfo]
@@ -341,8 +392,8 @@ function App() {
 
     const findRelatedOpcodes = (
         opcodeStr: string,
-        allOpcodes: Opcode[]
-    ): Opcode[] => {
+        allOpcodes: instruction[]
+    ): instruction[] => {
         const normalizedStr = opcodeStr.trim().toUpperCase();
         const parts = normalizedStr.split(/\s+|,/);
         const commandName = parts[0];
@@ -350,10 +401,10 @@ function App() {
         return allOpcodes
             .filter(
                 (op) =>
-                    op.name.toUpperCase().includes(commandName) ||
-                    (op.alias_of &&
-                        op.alias_of.toUpperCase().includes(commandName)) ||
-                    op.doc_fift.toUpperCase().includes(commandName)
+                    op.mnemonic.toUpperCase().includes(commandName) 
+                    // ||
+                    // (op.aliases &&
+                    //     op.aliases.some(alias => alias.mnemonic.toUpperCase().includes(commandName)))
             )
             .slice(0, 5);
     };
@@ -946,7 +997,7 @@ function App() {
                                             position="relative"
                                             bg="white"
                                             overflow="hidden"
-                                            px="2rem"
+                                            pl="2rem"
                                             height={
                                                 maxDocWindowHeight > 0
                                                     ? `${maxDocWindowHeight}px`
@@ -957,166 +1008,162 @@ function App() {
                                             ref={docBoxRef}
                                         >
                                             {selectedOpcode ? (
-                                                <Box>
-                                                    <Flex alignItems="center">
-                                                        <Text
-                                                            fontSize="20"
-                                                            fontFamily="IntelOneMono Bold"
-                                                        >
-                                                            {
-                                                                selectedOpcode.name
-                                                            }
-                                                        </Text>
-                                                        {selectedOpcode.alias_of && (
+                                                <Flex gap="2rem" height="100%" overflowX="auto">
+                                                    <Box flex="1" minW="50%">
+                                                        <Flex alignItems="center">
                                                             <Text
-                                                                fontSize="16"
-                                                                color="gray.500"
-                                                                ml="2"
+                                                                fontSize="20"
+                                                                fontFamily="IntelOneMono Bold"
                                                             >
-                                                                (alias of{' '}
                                                                 {
-                                                                    selectedOpcode.alias_of
+                                                                    selectedOpcode.mnemonic
                                                                 }
-                                                                )
                                                             </Text>
-                                                        )}
-                                                    </Flex>
-                                                    <Text
-                                                        fontSize="14"
-                                                        lineHeight="1.5"
-                                                        whiteSpace="pre-wrap"
-                                                        sx={{
-                                                            '& code': {
-                                                                bg: 'gray.100',
-                                                                p: '1px 4px',
-                                                                borderRadius:
-                                                                    '3px',
-                                                                fontFamily:
-                                                                    'IntelOneMono',
-                                                                fontSize: '90%',
-                                                            },
-                                                            '& em': {
-                                                                fontStyle:
-                                                                    'italic',
-                                                                color: 'gray.700',
-                                                            },
-                                                        }}
-                                                    >
-                                                        <br />
-                                                        <em>Fift:</em>{' '}
-                                                        {selectedOpcode.doc_fift
-                                                            .split('\n')
-                                                            .map(
-                                                                (
-                                                                    asm,
-                                                                    index
-                                                                ) => (
-                                                                    <code
-                                                                        key={
-                                                                            index
-                                                                        }
-                                                                    >
-                                                                        {asm}
-                                                                    </code>
-                                                                )
-                                                            )
-                                                            .reduce(
-                                                                (
-                                                                    prev,
-                                                                    curr,
-                                                                    i
-                                                                ) => [
-                                                                    ...prev,
-                                                                    i > 0
-                                                                        ? ','
-                                                                        : null,
-                                                                    curr,
-                                                                ],
-                                                                [] as React.ReactNode[]
-                                                            )}
-                                                        <br />
-                                                        <em>TLB:</em>{' '}
-                                                        <code>
-                                                            {selectedOpcode.tlb}
-                                                        </code>
-                                                        <br />
-                                                        <em>Stack:</em>{' '}
-                                                        <code>
-                                                            {
-                                                                selectedOpcode.doc_stack
-                                                            }
-                                                        </code>
-                                                        <br />
-                                                        <em>Gas:</em>{' '}
-                                                        <code>
-                                                            {
-                                                                selectedOpcode.doc_gas
-                                                            }
-                                                        </code>
-                                                        <br />
-                                                        <br />
-                                                        <div
-                                                            dangerouslySetInnerHTML={{
-                                                                __html: parseMarkdown(
-                                                                    selectedOpcode.doc_description
-                                                                ),
+                                                        </Flex>
+                                                        <Text
+                                                            fontSize="14"
+                                                            lineHeight="1.5"
+                                                            whiteSpace="pre-wrap"
+                                                            sx={{
+                                                                '& code': {
+                                                                    bg: 'gray.100',
+                                                                    p: '1px 4px',
+                                                                    borderRadius:
+                                                                        '3px',
+                                                                    fontFamily:
+                                                                        'IntelOneMono',
+                                                                    fontSize: '90%',
+                                                                },
+                                                                '& em': {
+                                                                    fontStyle:
+                                                                        'italic',
+                                                                    color: 'gray.700',
+                                                                },
                                                             }}
-                                                        />
-                                                    </Text>
-                                                    {matchingOpcodes.length >
-                                                        1 && (
-                                                        <Box mt={4}>
-                                                            <Text
-                                                                fontSize="12"
-                                                                fontWeight="bold"
-                                                            >
-                                                                Similar opcodes:
-                                                            </Text>
-                                                            <Flex
-                                                                flexWrap="wrap"
-                                                                gap={2}
-                                                                mt={1}
-                                                            >
-                                                                {matchingOpcodes.map(
+                                                        >
+                                                            <br />
+                                                            <em>Fift:</em>{' '}
+                                                            {selectedOpcode.doc.fift
+                                                                .split('\n')
+                                                                .map(
                                                                     (
-                                                                        op,
-                                                                        idx
+                                                                        asm,
+                                                                        index
                                                                     ) => (
-                                                                        <Button
+                                                                        <code
                                                                             key={
-                                                                                idx
-                                                                            }
-                                                                            size="xs"
-                                                                            variant={
-                                                                                op.name ===
-                                                                                selectedOpcode.name
-                                                                                    ? 'solid'
-                                                                                    : 'outline'
-                                                                            }
-                                                                            rounded="0"
-                                                                            borderColor="#ACACAC"
-                                                                            bg={
-                                                                                op.name ===
-                                                                                selectedOpcode.name
-                                                                                    ? '#D9D9D9'
-                                                                                    : '#ffffff'
-                                                                            }
-                                                                            onClick={() =>
-                                                                                setSelectedOpcode(
-                                                                                    op
-                                                                                )
+                                                                                index
                                                                             }
                                                                         >
-                                                                            {
-                                                                                op.name
-                                                                            }
-                                                                        </Button>
+                                                                            {asm}
+                                                                        </code>
                                                                     )
+                                                                )
+                                                                .reduce(
+                                                                    (
+                                                                        prev,
+                                                                        curr,
+                                                                        i
+                                                                    ) => [
+                                                                        ...prev,
+                                                                        i > 0
+                                                                            ? ','
+                                                                            : null,
+                                                                        curr,
+                                                                    ],
+                                                                    [] as React.ReactNode[]
                                                                 )}
-                                                            </Flex>
-                                                        </Box>
-                                                    )}
-                                                </Box>
+                                                            <br />
+                                                            <em>TLB:</em>{' '}
+                                                            <code>
+                                                                {selectedOpcode.bytecode.tlb}
+                                                            </code>
+                                                            <br />
+                                                            <em>Stack:</em>{' '}
+                                                            <code>
+                                                                {
+                                                                    selectedOpcode.doc.stack
+                                                                }
+                                                            </code>
+                                                            <br />
+                                                            <em>Gas:</em>{' '}
+                                                            <code>
+                                                                {
+                                                                    selectedOpcode.doc.gas
+                                                                }
+                                                            </code>
+                                                            <br />
+                                                            <br />
+                                                            <div
+                                                                dangerouslySetInnerHTML={{
+                                                                    __html: parseMarkdown(
+                                                                        selectedOpcode.doc.description
+                                                                    ),
+                                                                }}
+                                                            />
+                                                        </Text>
+                                                        {matchingOpcodes.length >
+                                                            1 && (
+                                                            <Box mt={4}>
+                                                                <Text
+                                                                    fontSize="12"
+                                                                    fontWeight="bold"
+                                                                >
+                                                                    Similar opcodes:
+                                                                </Text>
+                                                                <Flex
+                                                                    flexWrap="wrap"
+                                                                    gap={2}
+                                                                    mt={1}
+                                                                >
+                                                                    {matchingOpcodes.map(
+                                                                        (
+                                                                            op,
+                                                                            idx
+                                                                        ) => (
+                                                                            <Button
+                                                                                key={
+                                                                                    idx
+                                                                                }
+                                                                                size="xs"
+                                                                                variant={
+                                                                                    op.mnemonic ===
+                                                                                    selectedOpcode.mnemonic
+                                                                                        ? 'solid'
+                                                                                        : 'outline'
+                                                                                }
+                                                                                rounded="0"
+                                                                                borderColor="#ACACAC"
+                                                                                bg={
+                                                                                    op.mnemonic ===
+                                                                                    selectedOpcode.mnemonic
+                                                                                        ? '#D9D9D9'
+                                                                                        : '#ffffff'
+                                                                                }
+                                                                                onClick={() =>
+                                                                                    setSelectedOpcode(
+                                                                                        op
+                                                                                    )
+                                                                                }
+                                                                            >
+                                                                                {
+                                                                                    op.mnemonic
+                                                                                }
+                                                                            </Button>
+                                                                        )
+                                                                    )}
+                                                                </Flex>
+                                                            </Box>
+                                                        )}
+                                                    </Box>
+                                                    <ImplementationView 
+                                                        implementation={selectedOpcode.implementation}
+                                                        loadFileContent={loadFileContent}
+                                                        fileCache={fileCache}
+                                                        loadingFiles={loadingFiles}
+                                                        starryNight={starryNight}
+                                                    />
+                                                </Flex>
                                             ) : null}
                                         </Box>
                                     </Center>
@@ -1344,6 +1391,447 @@ function App() {
         </ChakraProvider>
     );
 }
+
+interface ImplementationViewProps {
+    implementation: Array<{
+        path: string;
+        line: number;
+        function_name?: string;
+        commit?: string;
+    }>;
+    loadFileContent: (url: string) => Promise<string>;
+    fileCache: Map<string, string>;
+    loadingFiles: Set<string>;
+}
+
+// helper functions for pretty GitHub links
+const extractFileNameFromUrl = (url: string): string => {
+    try {
+        const parts = url.split('/');
+        return parts[parts.length - 1];
+    } catch {
+        return url;
+    }
+};
+
+const convertRawToGitHubUrl = (rawUrl: string, line?: number): string => {
+    try {
+        // convert raw.githubusercontent.com to github.com/blob format
+        const converted = rawUrl
+            .replace('raw.githubusercontent.com', 'github.com')
+            .replace(/\/([a-f0-9]{40})\//, '/blob/$1/');
+        
+        return line ? `${converted}#L${line}` : converted;
+    } catch {
+        return rawUrl;
+    }
+};
+
+const ImplementationView: React.FC<ImplementationViewProps & { starryNight: any }> = ({
+    implementation,
+    loadFileContent,
+    fileCache,
+    loadingFiles,
+    starryNight
+}) => {
+    const [selectedImpl, setSelectedImpl] = useState<number>(0);
+    const [fileContent, setFileContent] = useState<string>('');
+    const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+    const codeContainerRef = useRef<HTMLDivElement>(null);
+    const fullscreenCodeRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (implementation.length > 0) {
+            const impl = implementation[selectedImpl];
+            if (impl?.path) {
+                setIsLoading(true);
+                loadFileContent(impl.path).then(content => {
+                    setFileContent(content);
+                    setIsLoading(false);
+                });
+            }
+        }
+    }, [implementation, selectedImpl, loadFileContent]);
+
+    // Auto-scroll to target line
+    useEffect(() => {
+        if (!isLoading && fileContent && implementation.length > 0) {
+            const impl = implementation[selectedImpl];
+            if (impl?.line) {
+                // Small delay to ensure DOM is updated
+                const timer = setTimeout(() => {
+                    const targetElement = document.getElementById(`target-line-${impl.line}`);
+                    if (targetElement && codeContainerRef.current) {
+                        // Use container's scroll for more reliable scrolling
+                        const container = codeContainerRef.current;
+                        const targetRect = targetElement.getBoundingClientRect();
+                        const containerRect = container.getBoundingClientRect();
+                        
+                        const scrollTop = container.scrollTop + (targetRect.top - containerRect.top) - 20; // 20px offset from top
+                        
+                        container.scrollTo({
+                            top: scrollTop,
+                            behavior: 'smooth'
+                        });
+                    }
+                }, 150); // Slightly longer delay for better reliability
+                
+                return () => clearTimeout(timer);
+            }
+        }
+    }, [isLoading, fileContent, selectedImpl, implementation]);
+
+    // Auto-scroll when opening fullscreen
+    useEffect(() => {
+        if (isFullscreen && implementation.length > 0 && !isLoading && fileContent) {
+            const impl = implementation[selectedImpl];
+            if (impl?.line) {
+                const scrollToTarget = (attempt = 1) => {
+                    const maxAttempts = 3;
+                    const targetId = `fullscreen-target-line-${impl.line}`;
+                    
+                    let fullscreenTarget = document.getElementById(targetId);
+                    
+                    // check within modal if not found
+                    if (!fullscreenTarget) {
+                        const modal = document.getElementById('fullscreen-modal');
+                        if (modal) {
+                            fullscreenTarget = modal.querySelector(`[id="${targetId}"]`);
+                        }
+                    }
+                    
+                    if (fullscreenTarget) {
+                        // use scrollIntoView directly - it's the only method that works reliably
+                        fullscreenTarget.scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'start',
+                            inline: 'nearest'
+                        });
+                    } else if (attempt < maxAttempts) {
+                        // retry with delay if element not found yet
+                        setTimeout(() => scrollToTarget(attempt + 1), 300 * attempt);
+                    }
+                };
+                
+                const timer = setTimeout(() => scrollToTarget(), 400);
+                
+                return () => clearTimeout(timer);
+            }
+        }
+    }, [isFullscreen, selectedImpl, implementation, isLoading, fileContent]);
+
+    if (implementation.length === 0) {
+        return (
+            <Box flex="1" bg="gray.50" p="4" borderRadius="md">
+                <Text fontSize="14" color="gray.500">
+                    no implementation info available
+                </Text>
+            </Box>
+        );
+    }
+
+    const impl = implementation[selectedImpl];
+    const { code, startLine } = getCodeAroundLine(fileContent, impl?.line || 0);
+
+    const highlightCodeBlock = (codeText: string) => {
+        if (!starryNight || !codeText) return null;
+        
+        try {
+            // try to find C++ scope
+            const cppScope = starryNight.flagToScope('cpp') || starryNight.flagToScope('c++') || 'source.cpp';
+            const tree = starryNight.highlight(codeText, cppScope);
+            return toHtml(tree);
+        } catch (error) {
+            console.warn('Failed to highlight code:', error);
+            return null;
+        }
+    };
+
+    const addLineNumbers = (htmlContent: string, startLine: number, targetLine?: number) => {
+        const lines = htmlContent.split('\n');
+        return lines.map((line, idx) => {
+            const currentLineNumber = startLine + idx;
+            const lineNumber = currentLineNumber.toString().padStart(4, ' ');
+            const isTarget = targetLine && currentLineNumber === targetLine;
+            const bgColor = isTarget ? 'background-color: #e3f2fd;' : '';
+            const lineNumColor = isTarget ? 'color: #1976d2; font-weight: bold;' : 'color: #999;';
+            const lineId = isTarget ? `id="target-line-${targetLine}"` : '';
+            return `<div ${lineId} style="display: flex; ${bgColor}"><span style="${lineNumColor} padding-right: 10px; user-select: none; white-space: pre;">${lineNumber}</span><span style="white-space: pre;">${line}</span></div>`;
+        }).join('');
+    };
+
+    const codeViewer = (
+        <Box
+            bg="white"
+            border="1px solid"
+            borderColor="gray.300"
+            borderRadius="0"
+            overflow="hidden"
+            height="100%"
+        >
+            {isLoading ? (
+                <Flex justifyContent="center" alignItems="center" height="200px">
+                    <Spinner size="sm" />
+                    <Text ml="2" fontSize="12">loading implementation...</Text>
+                </Flex>
+            ) : (
+                <>
+                    <Flex
+                        bg="gray.50"
+                        p="2"
+                        borderBottom="1px solid"
+                        borderColor="gray.200"
+                        justifyContent="space-between"
+                        alignItems="center"
+                    >
+                        <Link
+                            href={convertRawToGitHubUrl(impl.path, impl.line)}
+                            isExternal
+                            fontSize="10"
+                            color="blue.600"
+                            textDecoration="underline"
+                            _hover={{ color: 'blue.800' }}
+                        >
+                            {extractFileNameFromUrl(impl.path)} : {impl.line} {impl.function_name ? `(${impl.function_name})` : ''}
+                        </Link>
+                        <IconButton
+                            aria-label="Fullscreen"
+                            icon={<ExternalLinkIcon />}
+                            size="xs"
+                            variant="ghost"
+                            onClick={() => setIsFullscreen(true)}
+                        />
+                    </Flex>
+                    <Box overflowY="auto" overflowX="auto" height="calc(100% - 40px)" ref={codeContainerRef}>
+                        <Box
+                            fontFamily="IntelOneMono, monospace"
+                            fontSize="12px"
+                            lineHeight="1.4"
+                            p="16px"
+                            bg="white"
+                            minW="max-content"
+                            className="starry-night-code"
+                        >
+                            {(() => {
+                                const highlighted = highlightCodeBlock(code);
+                                if (highlighted) {
+                                    return (
+                                        <div
+                                            dangerouslySetInnerHTML={{
+                                                __html: addLineNumbers(highlighted, startLine, impl?.line)
+                                            }}
+                                        />
+                                    );
+                                } else {
+                                    return code.split('\n').map((line, idx) => {
+                                        const currentLineNumber = startLine + idx;
+                                        const isTarget = impl?.line && currentLineNumber === impl.line;
+                                        return (
+                                            <div 
+                                                key={idx} 
+                                                id={isTarget ? `target-line-${impl.line}` : undefined}
+                                                style={{ 
+                                                    display: 'flex',
+                                                    backgroundColor: isTarget ? '#e3f2fd' : 'transparent'
+                                                }}
+                                            >
+                                                <span style={{ 
+                                                    color: isTarget ? '#1976d2' : '#999',
+                                                    fontWeight: isTarget ? 'bold' : 'normal',
+                                                    paddingRight: '10px', 
+                                                    userSelect: 'none', 
+                                                    whiteSpace: 'pre' 
+                                                }}>
+                                                    {currentLineNumber.toString().padStart(4, ' ')}
+                                                </span>
+                                                <span style={{ whiteSpace: 'pre' }}>{line}</span>
+                                            </div>
+                                        );
+                                    });
+                                }
+                            })()}
+                        </Box>
+                    </Box>
+                </>
+            )}
+        </Box>
+    );
+
+    return (
+        <>
+            <Box flex="1" maxW="50%" minW="400px" display="flex" flexDirection="column">
+                <Flex justifyContent="space-between" alignItems="center" mb="2">
+                    <Text fontSize="16" fontFamily="IntelOneMono Bold">
+                        Implementation
+                    </Text>
+                </Flex>
+                
+                {implementation.length > 1 && (
+                    <Flex mb="2" gap="1">
+                        {implementation.map((impl, idx) => (
+                            <Button
+                                key={idx}
+                                size="xs"
+                                variant={selectedImpl === idx ? 'solid' : 'outline'}
+                                rounded="0"
+                                borderColor="#ACACAC"
+                                bg={selectedImpl === idx ? '#D9D9D9' : 'white'}
+                                onClick={() => setSelectedImpl(idx)}
+                                fontSize="10"
+                            >
+                                {impl.function_name || `impl ${idx + 1}`}
+                            </Button>
+                        ))}
+                    </Flex>
+                )}
+
+                {codeViewer}
+            </Box>
+
+            {/* fullscreen modal */}
+            <Modal
+                isOpen={isFullscreen}
+                onClose={() => setIsFullscreen(false)}
+                size="full"
+                scrollBehavior="inside"
+                id="fullscreen-modal"
+            >
+                <ModalOverlay />
+                <ModalContent rounded="0">
+                    <ModalHeader
+                        fontFamily="IntelOneMono Bold"
+                        bg="gray.50"
+                        borderBottom="1px solid"
+                        borderColor="gray.200"
+                    >
+                        <Flex justifyContent="space-between" alignItems="center">
+                            <Flex alignItems="center" gap="2">
+                                <Text>
+                                    {impl.function_name || 'Implementation'} -
+                                </Text>
+                                <Link
+                                    href={convertRawToGitHubUrl(impl.path, impl.line)}
+                                    isExternal
+                                    color="blue.600"
+                                    textDecoration="underline"
+                                    _hover={{ color: 'blue.800' }}
+                                >
+                                    {extractFileNameFromUrl(impl.path)}:{impl.line}
+                                </Link>
+                            </Flex>
+                            <Flex gap="2">
+                                {implementation.length > 1 &&
+                                    implementation.map((impl, idx) => (
+                                        <Button
+                                            key={idx}
+                                            size="xs"
+                                            variant={selectedImpl === idx ? 'solid' : 'outline'}
+                                            rounded="0"
+                                            borderColor="#ACACAC"
+                                            bg={selectedImpl === idx ? '#D9D9D9' : 'white'}
+                                            onClick={() => setSelectedImpl(idx)}
+                                            fontSize="10"
+                                        >
+                                            {impl.function_name || `impl ${idx + 1}`}
+                                        </Button>
+                                    ))}
+                            </Flex>
+                        </Flex>
+                    </ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody p="0">
+                        <Box height="calc(100vh - 80px)" overflow="auto" ref={fullscreenCodeRef}>
+                            <Box
+                                fontFamily="IntelOneMono, monospace"
+                                fontSize="14px"
+                                lineHeight="1.4"
+                                p="20px"
+                                bg="white"
+                                height="100%"
+                                overflow="auto"
+                                className="starry-night-code"
+                            >
+                                {(() => {
+                                    const fullCode = fileContent || 'loading...';
+                                    const highlighted = highlightCodeBlock(fullCode);
+                                    if (highlighted) {
+                                        const addFullLineNumbers = (htmlContent: string) => {
+                                            const lines = htmlContent.split('\n');
+                                            return lines.map((line, idx) => {
+                                                const currentLineNumber = idx + 1;
+                                                const lineNumber = currentLineNumber.toString().padStart(4, ' ');
+                                                const isTarget = impl?.line && currentLineNumber === impl.line;
+                                                const bgColor = isTarget ? 'background-color: #e3f2fd;' : '';
+                                                const lineNumColor = isTarget ? 'color: #1976d2; font-weight: bold;' : 'color: #999;';
+                                                const lineId = isTarget ? `id="fullscreen-target-line-${impl.line}"` : '';
+                                                return `<div ${lineId} style="display: flex; ${bgColor}"><span style="${lineNumColor} padding-right: 15px; user-select: none; white-space: pre;">${lineNumber}</span><span style="white-space: pre; word-break: break-all;">${line}</span></div>`;
+                                            }).join('');
+                                        };
+                                        return (
+                                            <div
+                                                dangerouslySetInnerHTML={{
+                                                    __html: addFullLineNumbers(highlighted)
+                                                }}
+                                            />
+                                        );
+                                    } else {
+                                        return fullCode.split('\n').map((line, idx) => {
+                                            const currentLineNumber = idx + 1;
+                                            const isTarget = impl?.line && currentLineNumber === impl.line;
+                                            return (
+                                                <div 
+                                                    key={idx} 
+                                                    id={isTarget ? `fullscreen-target-line-${impl.line}` : undefined}
+                                                    style={{ 
+                                                        display: 'flex',
+                                                        backgroundColor: isTarget ? '#e3f2fd' : 'transparent'
+                                                    }}
+                                                >
+                                                    <span style={{ 
+                                                        color: isTarget ? '#1976d2' : '#999',
+                                                        fontWeight: isTarget ? 'bold' : 'normal',
+                                                        paddingRight: '15px', 
+                                                        userSelect: 'none', 
+                                                        whiteSpace: 'pre' 
+                                                    }}>
+                                                        {currentLineNumber.toString().padStart(4, ' ')}
+                                                    </span>
+                                                    <span style={{ wordBreak: 'break-all', whiteSpace: 'pre' }}>{line}</span>
+                                                </div>
+                                            );
+                                        });
+                                    }
+                                })()}
+                            </Box>
+                        </Box>
+                    </ModalBody>
+                </ModalContent>
+            </Modal>
+        </>
+    );
+};
+
+const highlightCodeAroundLine = (content: string, targetLine: number): string => {
+    if (!content) return 'loading...';
+    
+    const lines = content.split('\n');
+    const contextLines = 15; // show 15 lines before and after
+    const startLine = Math.max(0, targetLine - contextLines - 1);
+    const endLine = Math.min(lines.length, targetLine + contextLines);
+    
+    const relevantLines = lines.slice(startLine, endLine);
+    
+    return relevantLines
+        .map((line, idx) => {
+            const lineNumber = startLine + idx + 1;
+            const isTarget = lineNumber === targetLine;
+            const prefix = isTarget ? '>>> ' : '    ';
+            return `${lineNumber.toString().padStart(4, ' ')}:${prefix}${line}`;
+        })
+        .join('\n');
+};
+
 const parseMarkdown = (text: string): string => {
     if (!text) return '';
     let parsed = text.replace(/`([^`]+)`/g, '<code>$1</code>');

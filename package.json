@@ -26,10 +26,13 @@
         "@ton/sandbox": "0.33.0",
         "@ton/test-utils": "^0.8.0",
         "@ton/ton": "^15.3.0",
+        "@wooorm/starry-night": "^3.8.0",
         "bigint-buffer": "^1.1.5",
         "buffer": "^6.0.3",
         "express": "^5.1.0",
         "framer-motion": "^12.6.2",
+        "hast-util-from-html": "^2.0.3",
+        "hast-util-to-html": "^9.0.5",
         "react": "^19.1.0",
         "react-dom": "^19.1.0",
         "vite-plugin-require": "^1.2.14"
