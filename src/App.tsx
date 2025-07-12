@@ -311,6 +311,46 @@ function App() {
                 }
             }
 
+            if (commandName === 'PUSHINT') {
+                const params = parts.slice(1);
+                if (params.length >= 1) {
+                    const valueStr = params[0];
+                    const value = parseInt(valueStr);
+                    
+                    if (!isNaN(value)) {
+                        if (value >= -5 && value <= 10) {
+                            // PUSHINT_4 for small values (-5 <= x <= 10)
+                            return (
+                                opcodes.find(
+                                    (op) => op.mnemonic === 'PUSHINT_4'
+                                ) || null
+                            );
+                        } else if (value >= -128 && value <= 127) {
+                            // PUSHINT_8 for 8-bit values (-128 <= xx <= 127)
+                            return (
+                                opcodes.find(
+                                    (op) => op.mnemonic === 'PUSHINT_8'
+                                ) || null
+                            );
+                        } else if (value >= -32768 && value <= 32767) {
+                            // PUSHINT_16 for 16-bit values (-2^15 <= xx < 2^15)
+                            return (
+                                opcodes.find(
+                                    (op) => op.mnemonic === 'PUSHINT_16'
+                                ) || null
+                            );
+                        } else {
+                            // PUSHINT_LONG for large values
+                            return (
+                                opcodes.find(
+                                    (op) => op.mnemonic === 'PUSHINT_LONG'
+                                ) || null
+                            );
+                        }
+                    }
+                }
+            }
+
             for (const op of opcodes) {
                 if (op.doc.fift.includes('[') && op.doc.fift.includes(']')) {
                     const fiftParts = op.doc.fift.split(/\s+/);
