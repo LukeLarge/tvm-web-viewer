@@ -27,6 +27,7 @@ Session.vim
 # Local tools 
 src/runner/executor/
 src/runner/tesst.ts
+src/instructions/cp0.json
 compare.py
 .yarn/
 .yarnrc.yml

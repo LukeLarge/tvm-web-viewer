@@ -21,3 +21,157 @@
         url('./fonts/IntelOneMono/IntelOneMono-Bold.ttf') format('truetype');
     font-weight: bold;
 }
+
+/* Starry Night CSS - GitHub-like syntax highlighting */
+.starry-night-code {
+  --color-prettylights-syntax-comment: #6e7781;
+  --color-prettylights-syntax-constant: #0550ae;
+  --color-prettylights-syntax-entity: #8250df;
+  --color-prettylights-syntax-storage-modifier-import: #24292f;
+  --color-prettylights-syntax-entity-tag: #116329;
+  --color-prettylights-syntax-keyword: #cf222e;
+  --color-prettylights-syntax-string: #0a3069;
+  --color-prettylights-syntax-variable: #953800;
+  --color-prettylights-syntax-brackethighlighter-unmatched: #82071e;
+  --color-prettylights-syntax-invalid-illegal-text: #f6f8fa;
+  --color-prettylights-syntax-invalid-illegal-bg: #82071e;
+  --color-prettylights-syntax-carriage-return-text: #f6f8fa;
+  --color-prettylights-syntax-carriage-return-bg: #cf222e;
+  --color-prettylights-syntax-string-regexp: #116329;
+  --color-prettylights-syntax-markup-list: #3b2300;
+  --color-prettylights-syntax-markup-heading: #0550ae;
+  --color-prettylights-syntax-markup-italic: #24292f;
+  --color-prettylights-syntax-markup-bold: #24292f;
+  --color-prettylights-syntax-markup-deleted-text: #82071e;
+  --color-prettylights-syntax-markup-deleted-bg: #ffebe9;
+  --color-prettylights-syntax-markup-inserted-text: #116329;
+  --color-prettylights-syntax-markup-inserted-bg: #dafbe1;
+  --color-prettylights-syntax-markup-changed-text: #953800;
+  --color-prettylights-syntax-markup-changed-bg: #ffd8b5;
+  --color-prettylights-syntax-markup-ignored-text: #eaeef2;
+  --color-prettylights-syntax-markup-ignored-bg: #0550ae;
+  --color-prettylights-syntax-meta-diff-range: #8250df;
+  --color-prettylights-syntax-brackethighlighter-angle: #57606a;
+  --color-prettylights-syntax-sublimelinter-gutter-mark: #8c959f;
+  --color-prettylights-syntax-constant-other-reference-link: #0a3069;
+}
+
+.pl-c /* comment, punctuation.definition.comment, string.comment */ {
+  color: var(--color-prettylights-syntax-comment);
+}
+
+.pl-c1 /* constant, entity.name.constant, variable.other.constant, variable.other.enummember, variable.language */ {
+  color: var(--color-prettylights-syntax-constant);
+}
+
+.pl-e /* entity */ {
+  color: var(--color-prettylights-syntax-entity);
+}
+
+.pl-en /* entity.name */ {
+  color: var(--color-prettylights-syntax-entity);
+}
+
+.pl-smi /* variable.parameter.function, storage.modifier.package, storage.modifier.import, storage.type.java, variable.other */ {
+  color: var(--color-prettylights-syntax-storage-modifier-import);
+}
+
+.pl-ent /* entity.name.tag, markup.quote */ {
+  color: var(--color-prettylights-syntax-entity-tag);
+}
+
+.pl-k /* keyword, storage, storage.type */ {
+  color: var(--color-prettylights-syntax-keyword);
+}
+
+.pl-s /* string */ {
+  color: var(--color-prettylights-syntax-string);
+}
+
+.pl-pds /* punctuation.definition.string */ {
+  color: var(--color-prettylights-syntax-string);
+}
+
+.pl-s1 /* string source */ {
+  color: var(--color-prettylights-syntax-string);
+}
+
+.pl-v /* variable */ {
+  color: var(--color-prettylights-syntax-variable);
+}
+
+.pl-id /* invalid.deprecated */ {
+  color: var(--color-prettylights-syntax-invalid-illegal-text);
+  background-color: var(--color-prettylights-syntax-invalid-illegal-bg);
+}
+
+.pl-ii /* invalid.illegal */ {
+  color: var(--color-prettylights-syntax-invalid-illegal-text);
+  background-color: var(--color-prettylights-syntax-invalid-illegal-bg);
+}
+
+.pl-sr /* string.regexp */ {
+  color: var(--color-prettylights-syntax-string-regexp);
+}
+
+.pl-mi /* markup.italic */ {
+  color: var(--color-prettylights-syntax-markup-italic);
+  font-style: italic;
+}
+
+.pl-mb /* markup.bold */ {
+  color: var(--color-prettylights-syntax-markup-bold);
+  font-weight: bold;
+}
+
+.pl-md /* markup.deleted, meta.diff.header.from-file, punctuation.definition.deleted */ {
+  color: var(--color-prettylights-syntax-markup-deleted-text);
+  background-color: var(--color-prettylights-syntax-markup-deleted-bg);
+}
+
+.pl-mi1 /* markup.inserted, meta.diff.header.to-file, punctuation.definition.inserted */ {
+  color: var(--color-prettylights-syntax-markup-inserted-text);
+  background-color: var(--color-prettylights-syntax-markup-inserted-bg);
+}
+
+.pl-mc /* markup.changed, punctuation.definition.changed */ {
+  color: var(--color-prettylights-syntax-markup-changed-text);
+  background-color: var(--color-prettylights-syntax-markup-changed-bg);
+}
+
+.pl-mi2 /* markup.ignored, markup.untracked */ {
+  color: var(--color-prettylights-syntax-markup-ignored-text);
+  background-color: var(--color-prettylights-syntax-markup-ignored-bg);
+}
+
+.pl-mh /* markup.heading */ {
+  color: var(--color-prettylights-syntax-markup-heading);
+  font-weight: bold;
+}
+
+.pl-ms /* meta.separator */ {
+  color: var(--color-prettylights-syntax-meta-diff-range);
+  font-weight: bold;
+}
+
+.pl-mq /* markup.quote */ {
+  color: var(--color-prettylights-syntax-entity-tag);
+}
+
+.pl-mdr /* meta.diff.range */ {
+  color: var(--color-prettylights-syntax-meta-diff-range);
+  font-weight: bold;
+}
+
+.pl-ba /* brackethighlighter.tag, brackethighlighter.curly, brackethighlighter.round, brackethighlighter.square, brackethighlighter.angle, brackethighlighter.quote */ {
+  color: var(--color-prettylights-syntax-brackethighlighter-angle);
+}
+
+.pl-sg /* sublimelinter.gutter-mark */ {
+  color: var(--color-prettylights-syntax-sublimelinter-gutter-mark);
+}
+
+.pl-corl /* constant.other.reference.link, string.other.link */ {
+  color: var(--color-prettylights-syntax-constant-other-reference-link);
+  text-decoration: underline;
+}
