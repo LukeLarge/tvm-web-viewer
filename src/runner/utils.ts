@@ -8,7 +8,7 @@ import {
     TransactionList,
     TxLinks,
 } from './types';
-import { waitForRateLimit } from './runner';
+import { waitForRateLimit, headers } from './runner';
 
 export async function fetchTransactions(
     params: GetTransactionsParams,
@@ -24,6 +24,7 @@ export async function fetchTransactions(
             }toncenter.com/api/v3/transactions`,
             {
                 params,
+                headers,
             }
         );
         return response.data;
@@ -62,6 +63,7 @@ export async function mcSeqnoByShard(
                     shard: '0x' + shardUint.toString(16),
                     seqno: shard.seqno,
                 },
+                headers,
             }
         );
         const block = response.data.blocks[0];
@@ -149,6 +151,7 @@ export async function getConfigAll(
                 params: {
                     seqno: mcBlockSeqno,
                 },
+                headers,
             }
         );
         return response.data.result.config.bytes;
@@ -248,48 +251,7 @@ export async function linkToTx(
             'dton',
         ];
         try {
-            // (copied from ton.cx lt and hash field)
-            // example:
-            // 47670702000009:3e5f49798de239da5d8f80b4dc300204d37613e4203a3f7b877c04a88c81856b
-            let [ltStr, hashStr] = txLink.split(':');
-            lt = BigInt(ltStr);
-            hash = Buffer.from(hashStr, 'hex');
-
-            // first try mainnet.
-            // if get transaction failed, try testnet
-            let res: TransactionList;
-            testnet = forcedTestnet || false;
-
-            if (forcedTestnet)
-                res = await fetchTransactions(
-                    { hash: hashStr, limit: 1 },
-                    forcedTestnet
-                );
-            else
-                try {
-                    res = await fetchTransactions(
-                        { hash: hashStr, limit: 1 },
-                        testnet
-                    );
-                    if (res.transactions.length === 0) {
-                        triedFormats.push('lt:hash mainnet');
-                        throw new Error('nope');
-                    }
-                } catch {
-                    console.log(`Trying lt:hash testnet for ${hashStr}...`);
-                    testnet = true;
-                    await waitForRateLimit();
-                    res = await fetchTransactions(
-                        { hash: hashStr, limit: 1 },
-                        testnet
-                    );
-                    if (res.transactions.length === 0) {
-                        triedFormats.push('lt:hash testnet');
-                        throw new Error('nope');
-                    }
-                }
-            addr = Address.parseRaw(res.transactions[0].account);
-        } catch (e) {
+            // try bare hash first
             console.log('Trying bare hash formats...');
             try {
                 if (txLink.endsWith('=')) {
@@ -309,7 +271,8 @@ export async function linkToTx(
                 let res: TransactionList;
                 testnet = forcedTestnet || false;
 
-                await waitForRateLimit();
+                // await waitForRateLimit(testnet ? apiKeyTestnet : apiKey);
+                // it's first api call, so do not wait
                 if (forcedTestnet)
                     res = await fetchTransactions(
                         { hash: txLink, limit: 1 },
@@ -347,15 +310,71 @@ export async function linkToTx(
                 lt = BigInt(res.transactions[0].lt);
                 addr = Address.parseRaw(res.transactions[0].account);
             } catch (e) {
-                let maybeMsg = '';
-                if (e instanceof Error && e.message != 'nope') {
-                    maybeMsg = 'Got strange error: ' + e.message;
+                // try lt:hash format
+                console.log('Trying lt:hash format...');
+                try {
+                    // example: 47670702000009:3e5f49798de239da5d8f80b4dc300204d37613e4203a3f7b877c04a88c81856b
+                    let [ltStr, hashStr] = txLink.split(':');
+                    lt = BigInt(ltStr);
+                    hash = Buffer.from(hashStr, 'hex');
+
+                    let res: TransactionList;
+                    testnet = forcedTestnet || false;
+
+                    if (forcedTestnet) {
+                        await waitForRateLimit();
+                        res = await fetchTransactions(
+                            { hash: hashStr, limit: 1 },
+                            forcedTestnet
+                        );
+                    } else
+                        try {
+                            // value may be set by forcedTestnet
+                            await waitForRateLimit();
+                            res = await fetchTransactions(
+                                { hash: hashStr, limit: 1 },
+                                testnet
+                            );
+                            if (res.transactions.length === 0) {
+                                triedFormats.push('lt:hash mainnet');
+                                throw new Error('nope');
+                            }
+                        } catch {
+                            console.log(
+                                `Trying lt:hash testnet for ${hashStr}...`
+                            );
+                            testnet = true;
+                            await waitForRateLimit();
+                            res = await fetchTransactions(
+                                { hash: hashStr, limit: 1 },
+                                testnet
+                            );
+                            if (res.transactions.length === 0) {
+                                triedFormats.push('lt:hash testnet');
+                                throw new Error('nope');
+                            }
+                        }
+                    addr = Address.parseRaw(res.transactions[0].account);
+                } catch (e) {
+                    let maybeMsg = '';
+                    if (e instanceof Error && e.message != 'nope') {
+                        maybeMsg = 'Got strange error: ' + e.message;
+                    }
+                    const formatsStr = triedFormats.join(', ');
+                    throw new Error(
+                        `Coudn't recognize such link, tried all formats: ${formatsStr}. ${maybeMsg}`
+                    );
                 }
-                const formatsStr = triedFormats.join(', ');
-                throw new Error(
-                    `Coudn't recognize such link, tried all formats: ${formatsStr}. ${maybeMsg}`
-                );
             }
+        } catch (e) {
+            let maybeMsg = '';
+            if (e instanceof Error && e.message != 'nope') {
+                maybeMsg = 'Got strange error: ' + e.message;
+            }
+            const formatsStr = triedFormats.join(', ');
+            throw new Error(
+                `Coudn't recognize such link, tried all formats: ${formatsStr}. ${maybeMsg}`
+            );
         }
     }
     return { tx: { lt, hash, addr }, testnet };
