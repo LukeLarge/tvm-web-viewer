@@ -398,7 +398,7 @@ export function txToLinks(opts: BaseTxInfo, testnet: boolean): TxLinks {
         }&hash=${opts.hash.toString('hex')}`,
         dton: `https://${
             testnet ? 'testnet.' : ''
-        }dton.io/tx/F64C6A3CDF3FAD1D786AACF9A6130F18F3F76EEB71294F53BBD812AD3703E70A`,
+        }dton.io/tx/${opts.hash.toString('hex')}`,
     };
 }
 
