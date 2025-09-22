@@ -46,6 +46,7 @@ export type TVMLog = {
 };
 
 export type TxLinks = {
+    txtracer: string;
     toncx: string;
     tonviewer: string;
     tonscan: string;
