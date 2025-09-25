@@ -73,7 +73,7 @@ import { instruction, root_schema } from './instructions/schema';
 
 type KeyPressHandler = () => void;
 const OPCODES_JSON_URL =
-    'https://raw.githubusercontent.com/ton-community/tvm-spec/refs/heads/dev/cp0.json';
+    'https://raw.githubusercontent.com/ton-community/tvm-spec/refs/heads/master/cp0.json';
 
 const getCodeAroundLine = (
     content: string,
