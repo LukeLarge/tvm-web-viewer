@@ -14,8 +14,9 @@ Older versions do not receive security updates.
 
 ## Reporting a Vulnerability
 
-Use this section to tell people how to report a vulnerability.
+If you discover a security vulnerability, please report it by emailing **security@example.com** or by using the [GitHub Security Advisories](https://github.com/your-org/your-repo/security/advisories) feature.
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+- **Initial Response:** We aim to acknowledge receipt of your report within **2 business days**.
+- **Status Updates:** You will receive updates at least every **5 business days** until the issue is resolved or declined.
+- **Resolution Process:** If the vulnerability is accepted, we will work with you to coordinate a fix and public disclosure. If declined, we will provide a clear explanation.
+- **Secure Communication:** If you wish to encrypt your report, please use our PGP key available at [https://example.com/pgp-key.txt](https://example.com/pgp-key.txt).
