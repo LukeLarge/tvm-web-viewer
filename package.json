@@ -28,14 +28,14 @@
         "@ton/ton": "^15.2.1",
         "bigint-buffer": "^1.1.5",
         "buffer": "^6.0.3",
-        "express": "^5.1.0",
+        "express": "^5.2.1",
         "framer-motion": "^12.6.2",
         "react": "^19.1.0",
         "react-dom": "^19.1.0",
         "vite-plugin-require": "^1.2.14"
     },
     "devDependencies": {
-        "@types/express": "^5.0.1",
+        "@types/express": "^5.0.6",
         "@types/jest": "^29.5.14",
         "@types/jsonwebtoken": "^9.0.9",
         "@types/node": "^22.13.15",
