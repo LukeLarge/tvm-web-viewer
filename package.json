@@ -30,7 +30,7 @@
         "buffer": "^6.0.3",
         "express": "^5.1.0",
         "framer-motion": "^12.6.2",
-        "react": "^19.1.0",
+        "react": "^19.2.4",
         "react-dom": "^19.1.0",
         "vite-plugin-require": "^1.2.14"
     },
@@ -39,7 +39,7 @@
         "@types/jest": "^29.5.14",
         "@types/jsonwebtoken": "^9.0.9",
         "@types/node": "^22.13.15",
-        "@types/react": "^19.0.12",
+        "@types/react": "^19.2.14",
         "@types/react-dom": "^19.0.4",
         "@typescript-eslint/eslint-plugin": "^8.29.0",
         "@typescript-eslint/parser": "^8.29.0",
